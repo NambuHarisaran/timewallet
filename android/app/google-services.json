@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "800250400212",
+    "project_id": "aqrocashato",
+    "storage_bucket": "aqrocashato.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:800250400212:android:290f06063bcd9e70a61a41",
+        "android_client_info": {
+          "package_name": "in.no1ads.timewallet"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "800250400212-3crh02lgt7vdcb6ma57irafnjucub04j.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "in.no1ads.timewallet",
+            "certificate_hash": "2c7578515427692a5981ba8311afd22edc29e72f"
+          }
+        },
+        {
+          "client_id": "800250400212-ulu5aqeebhualtvf468rt4stib5k7ji2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyACtb2hFwPCRZ48UTh10cqrnqp2C3tdi6o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "800250400212-ulu5aqeebhualtvf468rt4stib5k7ji2.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "800250400212-hfhavhkt72so82h80ours11tg1f8e0ik.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "in.no1ads.timewallet"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,237 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../core/theme/app_colors.dart';
+import '../../services/auth_service.dart';
+import '../../state/app_providers.dart';
+import '../../widgets/responsive_body.dart';
+
+class LoginScreen extends ConsumerStatefulWidget {
+  const LoginScreen({super.key});
+
+  @override
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends ConsumerState<LoginScreen> {
+  final _email = TextEditingController();
+  final _password = TextEditingController();
+  final _confirm = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  // Signup is the default entry point; users toggle to "Log in".
+  bool _isSignUp = true;
+  bool _busy = false;
+  bool _obscure = true;
+
+  @override
+  void dispose() {
+    _email.dispose();
+    _password.dispose();
+    _confirm.dispose();
+    super.dispose();
+  }
+
+  /// Signup requires a stronger password than Firebase's 6-char minimum.
+  String? _validatePassword(String? v) {
+    final s = v ?? '';
+    if (!_isSignUp) return s.length < 6 ? 'Min 6 characters' : null;
+    if (s.length < 8) return 'Use at least 8 characters';
+    if (!RegExp(r'[A-Za-z]').hasMatch(s) || !RegExp(r'\d').hasMatch(s)) {
+      return 'Mix letters and numbers';
+    }
+    return null;
+  }
+
+  void _toast(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  Future<void> _submitEmail() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _busy = true);
+    final auth = ref.read(authServiceProvider);
+    try {
+      if (_isSignUp) {
+        await auth.signUpEmail(_email.text, _password.text);
+        _toast('Account created. Verification email sent to ${_email.text.trim()}.');
+      } else {
+        await auth.signInEmail(_email.text, _password.text);
+      }
+      // authStateProvider stream flips -> AuthGate routes away.
+    } catch (e) {
+      _toast(AuthService.describeError(e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _google() async {
+    setState(() => _busy = true);
+    try {
+      await ref.read(authServiceProvider).signInGoogle();
+    } catch (e) {
+      _toast(AuthService.describeError(e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _forgot() async {
+    if (_email.text.trim().isEmpty) {
+      _toast('Enter your email first.');
+      return;
+    }
+    try {
+      await ref.read(authServiceProvider).sendPasswordReset(_email.text);
+      _toast('Password reset email sent.');
+    } catch (e) {
+      _toast(AuthService.describeError(e));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return Scaffold(
+      body: ResponsiveBody(
+        padding: const EdgeInsets.all(24),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+                  Center(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.accent.withValues(alpha: 0.45),
+                            blurRadius: 30,
+                            spreadRadius: -6,
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(24),
+                        child: Image.asset('assets/logo.jpg',
+                            width: 96, height: 96, fit: BoxFit.cover),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text('TimeWallet',
+                      textAlign: TextAlign.center, style: t.displayLarge),
+                  const SizedBox(height: 6),
+                  Text('See your money as time.',
+                      textAlign: TextAlign.center, style: t.bodyMedium),
+                  const SizedBox(height: 36),
+                  TextFormField(
+                    controller: _email,
+                    keyboardType: TextInputType.emailAddress,
+                    autocorrect: false,
+                    decoration: const InputDecoration(
+                      labelText: 'Email',
+                      prefixIcon: Icon(Icons.mail_outline),
+                    ),
+                    validator: (v) =>
+                        (v == null || !v.contains('@')) ? 'Enter a valid email' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _password,
+                    obscureText: _obscure,
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      prefixIcon: const Icon(Icons.lock_outline),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                            _obscure ? Icons.visibility_off : Icons.visibility),
+                        onPressed: () => setState(() => _obscure = !_obscure),
+                      ),
+                    ),
+                    validator: _validatePassword,
+                  ),
+                  if (_isSignUp) ...[
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _confirm,
+                      obscureText: _obscure,
+                      decoration: const InputDecoration(
+                        labelText: 'Confirm password',
+                        prefixIcon: Icon(Icons.lock_outline),
+                      ),
+                      validator: (v) =>
+                          v != _password.text ? 'Passwords do not match' : null,
+                    ),
+                  ],
+                  if (!_isSignUp)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: _busy ? null : _forgot,
+                        child: const Text('Forgot password?'),
+                      ),
+                    ),
+                  const SizedBox(height: 12),
+                  FilledButton(
+                    onPressed: _busy ? null : _submitEmail,
+                    child: _busy
+                        ? const SizedBox(
+                            height: 22,
+                            width: 22,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white),
+                          )
+                        : Text(_isSignUp ? 'Create account' : 'Log in'),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      const Expanded(child: Divider()),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Text('or', style: t.labelSmall),
+                      ),
+                      const Expanded(child: Divider()),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  OutlinedButton.icon(
+                    onPressed: _busy ? null : _google,
+                    style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(52)),
+                    icon: const Text('G',
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.money,
+                            fontSize: 18)),
+                    label: const Text('Continue with Google'),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        _isSignUp
+                            ? 'Already have an account?'
+                            : "Don't have an account?",
+                        style: t.bodyMedium,
+                      ),
+                      TextButton(
+                        onPressed: _busy
+                            ? null
+                            : () => setState(() => _isSignUp = !_isSignUp),
+                        child: Text(_isSignUp ? 'Log in' : 'Sign up'),
+                      ),
+                    ],
+                  ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

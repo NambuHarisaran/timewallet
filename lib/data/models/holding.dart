@@ -1,0 +1,108 @@
+/// An investment the user holds: a stock, gold, or a generic asset.
+/// Phase 1 is fully manual — `manualPrice` is the current per-unit price the
+/// user types in. Phase 2 will fill it from a live quote instead.
+enum AssetType { stock, gold, other }
+
+extension AssetTypeX on AssetType {
+  String get label => switch (this) {
+        AssetType.stock => 'Stock',
+        AssetType.gold => 'Gold',
+        AssetType.other => 'Other',
+      };
+
+  String get emoji => switch (this) {
+        AssetType.stock => '📈',
+        AssetType.gold => '🪙',
+        AssetType.other => '💼',
+      };
+
+  /// Unit the `units` field is measured in.
+  String get unitLabel => switch (this) {
+        AssetType.stock => 'shares',
+        AssetType.gold => 'grams',
+        AssetType.other => 'units',
+      };
+}
+
+class Holding {
+  final String id;
+  final AssetType type;
+  final String name; // "Reliance", "Gold 22k", "Bitcoin"
+  final String? symbol; // quote symbol for Phase 2 ("RELIANCE.NS", "XAU")
+  final double units; // shares / grams / units
+  final double buyPrice; // per unit, at purchase (₹)
+  final DateTime buyDate;
+  final double? manualPrice; // current per unit (₹); null until user sets it
+  final String? meta; // purity for gold ("22k"), free text otherwise
+
+  const Holding({
+    required this.id,
+    required this.type,
+    required this.name,
+    required this.units,
+    required this.buyPrice,
+    required this.buyDate,
+    this.symbol,
+    this.manualPrice,
+    this.meta,
+  });
+
+  double get invested => units * buyPrice;
+
+  /// Falls back to buy price when no current price is set → P/L reads 0.
+  double get currentPrice => manualPrice ?? buyPrice;
+  double get currentValue => units * currentPrice;
+  double get pl => currentValue - invested;
+  double get plPct => invested <= 0 ? 0 : pl / invested;
+  bool get hasCurrentPrice => manualPrice != null;
+  bool get isUp => pl >= 0;
+
+  Holding copyWith({
+    AssetType? type,
+    String? name,
+    String? symbol,
+    double? units,
+    double? buyPrice,
+    DateTime? buyDate,
+    double? manualPrice,
+    bool clearManualPrice = false,
+    String? meta,
+  }) {
+    return Holding(
+      id: id,
+      type: type ?? this.type,
+      name: name ?? this.name,
+      symbol: symbol ?? this.symbol,
+      units: units ?? this.units,
+      buyPrice: buyPrice ?? this.buyPrice,
+      buyDate: buyDate ?? this.buyDate,
+      manualPrice: clearManualPrice ? null : (manualPrice ?? this.manualPrice),
+      meta: meta ?? this.meta,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'type': type.index,
+        'name': name,
+        'symbol': symbol,
+        'units': units,
+        'buyPrice': buyPrice,
+        'buyDate': buyDate.toIso8601String(),
+        'manualPrice': manualPrice,
+        'meta': meta,
+      };
+
+  factory Holding.fromJson(Map<String, dynamic> j) => Holding(
+        id: j['id'],
+        type: AssetType.values[(j['type'] ?? 0) as int],
+        name: j['name'] ?? '',
+        symbol: j['symbol'],
+        units: (j['units'] ?? 0).toDouble(),
+        buyPrice: (j['buyPrice'] ?? 0).toDouble(),
+        buyDate: DateTime.parse(j['buyDate']),
+        manualPrice:
+            j['manualPrice'] == null ? null : (j['manualPrice']).toDouble(),
+        meta: j['meta'],
+      );
+}
