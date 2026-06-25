@@ -1,0 +1,20 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  analyze-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      # api_keys.dart is git-ignored; provide the empty template so it compiles.
+      - run: cp lib/core/config/api_keys.example.dart lib/core/config/api_keys.dart
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
