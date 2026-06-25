@@ -16,6 +16,7 @@ class AddExpenseScreen extends ConsumerStatefulWidget {
 
 class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   final _amount = TextEditingController();
+  final _note = TextEditingController();
   String _categoryId = 'food';
   Mood _mood = Mood.neutral;
   NeedWant _needWant = NeedWant.need;
@@ -23,6 +24,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   @override
   void dispose() {
     _amount.dispose();
+    _note.dispose();
     super.dispose();
   }
 
@@ -38,6 +40,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
           needWant: _needWant,
           timeCostMinutes: minutes,
           hold: hold,
+          note: _note.text,
         );
     HapticFeedback.mediumImpact();
     Navigator.of(context).pop(hold);
@@ -123,7 +126,18 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             selected: {_needWant},
             onSelectionChanged: (s) => setState(() => _needWant = s.first),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 20),
+          TextField(
+            controller: _note,
+            textCapitalization: TextCapitalization.sentences,
+            maxLength: 80,
+            decoration: const InputDecoration(
+              labelText: 'Note (optional)',
+              hintText: 'What was it for?',
+              prefixIcon: Icon(Icons.notes),
+            ),
+          ),
+          const SizedBox(height: 16),
           if (isWant) ...[
             OutlinedButton(
               onPressed: _value > 0 ? () => _commit(hold: true) : null,

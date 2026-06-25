@@ -1,3 +1,5 @@
+import '../../core/util/json_safe.dart';
+
 enum NeedWant { need, want }
 
 class ExpenseCategory {
@@ -31,6 +33,7 @@ class Expense {
   final double timeCostMinutes;
   final DateTime? heldUntil; // set while in 24h regret cooldown
   final DateTime createdAt;
+  final String? note; // optional freetext context
 
   const Expense({
     required this.id,
@@ -41,6 +44,7 @@ class Expense {
     required this.timeCostMinutes,
     required this.createdAt,
     this.heldUntil,
+    this.note,
   });
 
   bool get isHeld => heldUntil != null && heldUntil!.isAfter(DateTime.now());
@@ -56,6 +60,7 @@ class Expense {
         timeCostMinutes: timeCostMinutes,
         createdAt: createdAt,
         heldUntil: clearHold ? null : (heldUntil ?? this.heldUntil),
+        note: note,
       );
 
   Map<String, dynamic> toJson() => {
@@ -67,17 +72,18 @@ class Expense {
         'timeCostMinutes': timeCostMinutes,
         'heldUntil': heldUntil?.toIso8601String(),
         'createdAt': createdAt.toIso8601String(),
+        'note': note,
       };
 
   factory Expense.fromJson(Map<String, dynamic> j) => Expense(
-        id: j['id'],
-        amount: (j['amount'] ?? 0).toDouble(),
-        categoryId: j['categoryId'] ?? 'other',
-        mood: Mood.values[j['mood'] ?? 1],
-        needWant: NeedWant.values[j['needWant'] ?? 0],
-        timeCostMinutes: (j['timeCostMinutes'] ?? 0).toDouble(),
-        heldUntil:
-            j['heldUntil'] == null ? null : DateTime.parse(j['heldUntil']),
-        createdAt: DateTime.parse(j['createdAt']),
+        id: safeString(j['id']),
+        amount: safeDouble(j['amount']),
+        categoryId: safeString(j['categoryId'], 'other'),
+        mood: safeEnum(j['mood'], Mood.values, Mood.neutral),
+        needWant: safeEnum(j['needWant'], NeedWant.values, NeedWant.need),
+        timeCostMinutes: safeDouble(j['timeCostMinutes']),
+        heldUntil: safeDateOrNull(j['heldUntil']),
+        createdAt: safeDate(j['createdAt']),
+        note: safeStringOrNull(j['note']),
       );
 }

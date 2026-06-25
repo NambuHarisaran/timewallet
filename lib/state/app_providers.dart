@@ -2,18 +2,24 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 import '../data/backend/data_backend.dart';
 import '../data/backend/firestore_backend.dart';
 import '../data/models/activity.dart';
+import '../data/models/category_budget.dart';
 import '../data/models/expense.dart';
 import '../data/models/goal.dart';
 import '../data/models/holding.dart';
 import '../data/models/user_profile.dart';
 import '../services/auth_service.dart';
-import '../services/price_service.dart';
+import '../services/price_provider.dart';
+import '../services/price_resolver.dart';
+import '../services/providers/finnhub_provider.dart';
+import '../services/providers/goldapi_provider.dart';
+import '../services/providers/mfapi_provider.dart';
+import '../services/providers/twelve_data_provider.dart';
 
 const _uuid = Uuid();
 
@@ -68,6 +74,47 @@ final holdingsProvider = StreamProvider<List<Holding>>(
 
 final activityProvider = StreamProvider<List<ActivityLog>>(
     (ref) => ref.watch(backendProvider).watchActivity());
+
+final budgetsProvider = StreamProvider<List<CategoryBudget>>(
+    (ref) => ref.watch(backendProvider).watchBudgets());
+
+final statsProvider = StreamProvider<Map<String, double>>(
+    (ref) => ref.watch(backendProvider).watchStats());
+
+/// Lifetime minutes reclaimed by skipping held wants.
+final reclaimedMinutesProvider = Provider<double>(
+    (ref) => ref.watch(statsProvider).asData?.value['reclaimedMinutes'] ?? 0);
+
+/// This calendar month's spend per category id.
+final categorySpendProvider = Provider<Map<String, double>>((ref) {
+  final now = DateTime.now();
+  final list = ref.watch(expensesProvider).asData?.value ?? const [];
+  final out = <String, double>{};
+  for (final e in list) {
+    if (e.isHeld) continue;
+    if (e.createdAt.year == now.year && e.createdAt.month == now.month) {
+      out[e.categoryId] = (out[e.categoryId] ?? 0) + e.amount;
+    }
+  }
+  return out;
+});
+
+/// Current consecutive-day work-logging streak (counts back from today).
+final streakProvider = Provider<int>((ref) {
+  final worked = ref.watch(workedProvider).asData?.value ?? const {};
+  if (worked.isEmpty) return 0;
+  var streak = 0;
+  var day = DateTime.now();
+  // Allow the streak to stand if today isn't logged yet but yesterday was.
+  if ((worked[dayKey(day)] ?? 0) <= 0) {
+    day = day.subtract(const Duration(days: 1));
+  }
+  while ((worked[dayKey(day)] ?? 0) > 0) {
+    streak++;
+    day = day.subtract(const Duration(days: 1));
+  }
+  return streak;
+});
 
 // ---------------------------------------------------------------------------
 // Derived
@@ -125,10 +172,18 @@ class PortfolioSummary {
 // ---------------------------------------------------------------------------
 // Live prices (Phase 2)
 // ---------------------------------------------------------------------------
-final priceServiceProvider = Provider<PriceService>((ref) {
-  final svc = PriceService();
-  ref.onDispose(svc.clearCache);
-  return svc;
+/// Ordered provider chain. Stocks: Finnhub → Twelve Data (fallback, if keyed).
+/// Gold: GoldAPI. Mutual funds: mfapi.in (no key). Removing/adding a vendor is
+/// a one-line change here — nothing else depends on a specific source.
+final priceResolverProvider = Provider<PriceResolver>((ref) {
+  final resolver = PriceResolver([
+    FinnhubProvider(),
+    TwelveDataProvider(),
+    GoldApiProvider(),
+    MfapiProvider(),
+  ]);
+  ref.onDispose(resolver.clearCache);
+  return resolver;
 });
 
 /// One holding valued at its effective price (live → manual → buy price).
@@ -162,16 +217,19 @@ class HoldingValue {
 /// UI. Refresh by `ref.invalidate(livePricesProvider)`.
 final livePricesProvider = FutureProvider<Map<String, Quote>>((ref) async {
   final holdings = ref.watch(holdingsProvider).asData?.value ?? const <Holding>[];
-  final svc = ref.watch(priceServiceProvider);
+  final resolver = ref.watch(priceResolverProvider);
   final out = <String, Quote>{};
   for (final h in holdings) {
     try {
-      Quote? q;
-      if (h.type == AssetType.stock && (h.symbol?.isNotEmpty ?? false)) {
-        q = await svc.stockQuote(h.symbol!);
-      } else if (h.type == AssetType.gold) {
-        q = await svc.goldPerGram(h.meta ?? '22k');
-      }
+      final q = switch (h.type) {
+        AssetType.stock when (h.symbol?.isNotEmpty ?? false) =>
+          await resolver.resolve(h.symbol!, AssetType.stock),
+        AssetType.gold =>
+          await resolver.resolve('XAU', AssetType.gold, meta: h.meta ?? '22k'),
+        AssetType.mutualFund when (h.symbol?.isNotEmpty ?? false) =>
+          await resolver.resolve(h.symbol!, AssetType.mutualFund),
+        _ => null,
+      };
       if (q != null) out[h.id] = q;
     } catch (_) {
       // Skip this symbol; others still resolve. UI falls back to manual.
@@ -232,7 +290,7 @@ class AppActions {
   /// Appends an entry to the activity log. Fire-and-forget; never blocks or
   /// fails the underlying mutation.
   Future<void> _log(ActivityType type, String title,
-      {String? subtitle, double? amount}) async {
+      {String? subtitle, double? amount, String? refId}) async {
     try {
       await _b.addActivity(ActivityLog(
         id: _uuid.v4(),
@@ -241,6 +299,7 @@ class AppActions {
         subtitle: subtitle,
         amount: amount,
         at: DateTime.now(),
+        refId: refId,
       ));
     } catch (_) {}
   }
@@ -257,7 +316,9 @@ class AppActions {
     required NeedWant needWant,
     required double timeCostMinutes,
     bool hold = false,
+    String? note,
   }) async {
+    final trimmed = note?.trim();
     final e = Expense(
       id: _uuid.v4(),
       amount: amount,
@@ -267,14 +328,17 @@ class AppActions {
       timeCostMinutes: timeCostMinutes,
       createdAt: DateTime.now(),
       heldUntil: hold ? DateTime.now().add(const Duration(hours: 24)) : null,
+      note: (trimmed == null || trimmed.isEmpty) ? null : trimmed,
     );
     await _b.upsertExpense(e);
     final cat = ExpenseCategory.byId(categoryId);
+    final hasNote = trimmed != null && trimmed.isNotEmpty;
     await _log(
       hold ? ActivityType.expenseHeld : ActivityType.expenseAdded,
       hold ? 'Put on 24h hold' : 'Added expense',
-      subtitle: '${cat.emoji} ${cat.label}',
+      subtitle: hasNote ? '${cat.label} · $trimmed' : '${cat.emoji} ${cat.label}',
       amount: amount,
+      refId: e.id,
     );
     return e;
   }
@@ -282,12 +346,17 @@ class AppActions {
   Future<void> confirmHeld(Expense e) async {
     await _b.upsertExpense(e.copyWith(clearHold: true));
     await _log(ActivityType.expenseBought, 'Bought held item',
-        subtitle: e.category.label, amount: e.amount);
+        subtitle: e.category.label, amount: e.amount, refId: e.id);
   }
 
-  Future<void> releaseHeld(String id) async {
-    await _b.deleteExpense(id);
-    await _log(ActivityType.expenseSkipped, 'Skipped a held want');
+  /// Skipping a held want deletes it and banks the work-time it would have cost.
+  Future<void> releaseHeld(Expense e) async {
+    await _b.deleteExpense(e.id);
+    if (e.timeCostMinutes > 0) {
+      await _b.addReclaimedMinutes(e.timeCostMinutes);
+    }
+    await _log(ActivityType.expenseSkipped, 'Skipped a held want',
+        subtitle: e.category.label);
   }
 
   Future<void> deleteExpense(String id) async {
@@ -370,6 +439,18 @@ class AppActions {
             : '${minutes.toStringAsFixed(0)}m');
   }
 
+  Future<void> setBudget(String categoryId, double monthlyLimit) => _b
+      .upsertBudget(CategoryBudget(
+          categoryId: categoryId, monthlyLimit: monthlyLimit));
+
+  Future<void> deleteBudget(String categoryId) => _b.deleteBudget(categoryId);
+
+  /// Deletes an expense referenced from a history row, plus that log entry.
+  Future<void> deleteExpenseEntry(ActivityLog log) async {
+    if (log.refId != null) await _b.deleteExpense(log.refId!);
+    await _b.deleteActivity(log.id);
+  }
+
   /// Clears the activity history only (data untouched).
   Future<void> clearActivity() => _b.clearActivity();
 
@@ -388,7 +469,9 @@ class AppActions {
     try {
       await _b.wipeAllData();
     } catch (_) {
-      // Continue to account deletion even if some docs fail to clear.
+      // Do NOT delete the account if the wipe failed — that would orphan data
+      // the user can never reach again.
+      return 'Could not clear your data — check your connection and try again.';
     }
     final auth = _ref.read(authServiceProvider);
     try {
@@ -407,6 +490,27 @@ class AppActions {
 }
 
 // ---------------------------------------------------------------------------
-// Theme
+// Theme (persisted via SharedPreferences)
 // ---------------------------------------------------------------------------
-final themeModeProvider = StateProvider<ThemeMode>((ref) => ThemeMode.dark);
+
+/// Overridden in main() with the resolved SharedPreferences instance.
+final sharedPrefsProvider = Provider<SharedPreferences>(
+    (_) => throw UnimplementedError('Override sharedPrefsProvider in main()'));
+
+class ThemeModeNotifier extends Notifier<ThemeMode> {
+  static const _key = 'darkMode';
+
+  @override
+  ThemeMode build() {
+    final dark = ref.read(sharedPrefsProvider).getBool(_key) ?? true;
+    return dark ? ThemeMode.dark : ThemeMode.light;
+  }
+
+  void setDark(bool dark) {
+    state = dark ? ThemeMode.dark : ThemeMode.light;
+    ref.read(sharedPrefsProvider).setBool(_key, dark);
+  }
+}
+
+final themeModeProvider =
+    NotifierProvider<ThemeModeNotifier, ThemeMode>(ThemeModeNotifier.new);

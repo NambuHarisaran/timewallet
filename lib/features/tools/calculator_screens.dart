@@ -40,6 +40,7 @@ class _SipState extends ConsumerState<SipCalculatorScreen> {
             (v) => setState(() => _years = v), '${_years.toStringAsFixed(0)} yrs'),
       ],
       result: _ResultCard(
+        accent: AppColors.positive,
         headline: 'Future value',
         headlineValue: _money.format(r.futureValue),
         footnote: profile.tracksTime
@@ -83,6 +84,7 @@ class _LumpsumState extends State<LumpsumCalculatorScreen> {
             (v) => setState(() => _years = v), '${_years.toStringAsFixed(0)} yrs'),
       ],
       result: _ResultCard(
+        accent: AppColors.money,
         headline: 'Future value',
         headlineValue: _money.format(r.futureValue),
         leftLabel: 'Invested',
@@ -123,6 +125,7 @@ class _EmiState extends State<EmiCalculatorScreen> {
             (v) => setState(() => _years = v), '${_years.toStringAsFixed(0)} yrs'),
       ],
       result: _ResultCard(
+        accent: AppColors.warn,
         headline: 'Monthly EMI',
         headlineValue: _money.format(r.emi),
         leftLabel: 'Principal',
@@ -133,6 +136,217 @@ class _EmiState extends State<EmiCalculatorScreen> {
         rightColor: AppColors.warn,
         bottomLabel: 'Total payable',
         bottomValue: r.totalPayable,
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Money → time (the signature tool)
+// ---------------------------------------------------------------------------
+class TimeValueScreen extends ConsumerStatefulWidget {
+  const TimeValueScreen({super.key});
+  @override
+  ConsumerState<TimeValueScreen> createState() => _TimeValueState();
+}
+
+class _TimeValueState extends ConsumerState<TimeValueScreen> {
+  double _amount = 1000;
+
+  @override
+  Widget build(BuildContext context) {
+    final profile = ref.watch(profileOrDefaultProvider);
+    final tracks = profile.tracksTime;
+    final minutes = profile.engine.minutesFor(_amount);
+    final pct = profile.monthlyMoney > 0
+        ? (_amount / profile.monthlyMoney * 100)
+        : 0;
+    return _CalcScaffold(
+      title: 'Money → time',
+      sliders: [
+        _CalcSlider('Amount', _amount, 100, 200000, 1999,
+            (v) => setState(() => _amount = v), _money.format(_amount),
+            accent: AppColors.time),
+      ],
+      result: _SimpleResult(
+        accent: AppColors.time,
+        headline: tracks ? 'That costs you' : 'Share of monthly budget',
+        value: tracks
+            ? TimeFormat.longForm(minutes, hoursPerDay: profile.hoursPerDay)
+            : (profile.monthlyMoney > 0
+                ? '${pct.toStringAsFixed(1)}%'
+                : 'Set up income first'),
+        footnote: tracks
+            ? 'At ${_money.format(profile.effectiveHourlyRate)}/hour you earn.'
+            : 'of your ${_money.format(profile.monthlyMoney)} monthly budget.',
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Goal SIP (how much to invest monthly to hit a target)
+// ---------------------------------------------------------------------------
+class GoalSipCalculatorScreen extends StatefulWidget {
+  const GoalSipCalculatorScreen({super.key});
+  @override
+  State<GoalSipCalculatorScreen> createState() => _GoalSipState();
+}
+
+class _GoalSipState extends State<GoalSipCalculatorScreen> {
+  double _target = 1000000, _rate = 12, _years = 10;
+
+  @override
+  Widget build(BuildContext context) {
+    final r = Calculators.goalSip(
+        target: _target, annualRatePct: _rate, years: _years);
+    return _CalcScaffold(
+      title: 'Goal SIP',
+      sliders: [
+        _CalcSlider('Target amount', _target, 50000, 50000000, 999,
+            (v) => setState(() => _target = v), _money.format(_target),
+            accent: AppColors.accent),
+        _CalcSlider('Expected return', _rate, 1, 30, 58,
+            (v) => setState(() => _rate = v), '${_rate.toStringAsFixed(1)}% p.a.',
+            accent: AppColors.accent),
+        _CalcSlider('Time period', _years, 1, 40, 39,
+            (v) => setState(() => _years = v), '${_years.toStringAsFixed(0)} yrs',
+            accent: AppColors.accent),
+      ],
+      result: _ResultCard(
+        accent: AppColors.accent,
+        headline: 'Monthly investment needed',
+        headlineValue: _money.format(r.monthly),
+        leftLabel: 'You invest',
+        leftValue: r.invested,
+        rightLabel: 'Returns',
+        rightValue: r.returns,
+        leftColor: AppColors.money,
+        rightColor: AppColors.positive,
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Fixed deposit
+// ---------------------------------------------------------------------------
+class FdCalculatorScreen extends StatefulWidget {
+  const FdCalculatorScreen({super.key});
+  @override
+  State<FdCalculatorScreen> createState() => _FdState();
+}
+
+class _FdState extends State<FdCalculatorScreen> {
+  double _principal = 100000, _rate = 7, _years = 5;
+
+  @override
+  Widget build(BuildContext context) {
+    final r = Calculators.fd(
+        principal: _principal, annualRatePct: _rate, years: _years);
+    return _CalcScaffold(
+      title: 'FD calculator',
+      sliders: [
+        _CalcSlider('Deposit amount', _principal, 1000, 10000000, 999,
+            (v) => setState(() => _principal = v), _money.format(_principal),
+            accent: AppColors.money),
+        _CalcSlider('Interest rate', _rate, 1, 12, 44,
+            (v) => setState(() => _rate = v), '${_rate.toStringAsFixed(1)}% p.a.',
+            accent: AppColors.money),
+        _CalcSlider('Tenure', _years, 1, 20, 19,
+            (v) => setState(() => _years = v), '${_years.toStringAsFixed(0)} yrs',
+            accent: AppColors.money),
+      ],
+      result: _ResultCard(
+        accent: AppColors.money,
+        headline: 'Maturity value',
+        headlineValue: _money.format(r.futureValue),
+        leftLabel: 'Principal',
+        leftValue: r.invested,
+        rightLabel: 'Interest',
+        rightValue: r.returns,
+        leftColor: AppColors.money,
+        rightColor: AppColors.positive,
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Inflation
+// ---------------------------------------------------------------------------
+class InflationCalculatorScreen extends StatefulWidget {
+  const InflationCalculatorScreen({super.key});
+  @override
+  State<InflationCalculatorScreen> createState() => _InflationState();
+}
+
+class _InflationState extends State<InflationCalculatorScreen> {
+  double _amount = 100000, _rate = 6, _years = 10;
+
+  @override
+  Widget build(BuildContext context) {
+    final future =
+        Calculators.inflate(amount: _amount, ratePct: _rate, years: _years);
+    return _CalcScaffold(
+      title: 'Inflation impact',
+      sliders: [
+        _CalcSlider("Today's cost", _amount, 1000, 10000000, 999,
+            (v) => setState(() => _amount = v), _money.format(_amount),
+            accent: AppColors.warn),
+        _CalcSlider('Inflation rate', _rate, 1, 15, 56,
+            (v) => setState(() => _rate = v), '${_rate.toStringAsFixed(1)}% p.a.',
+            accent: AppColors.warn),
+        _CalcSlider('Years ahead', _years, 1, 40, 39,
+            (v) => setState(() => _years = v), '${_years.toStringAsFixed(0)} yrs',
+            accent: AppColors.warn),
+      ],
+      result: _SimpleResult(
+        accent: AppColors.warn,
+        headline: 'Future cost',
+        value: _money.format(future),
+        footnote:
+            'What costs ${_money.format(_amount)} today will cost this in ${_years.toStringAsFixed(0)} years at ${_rate.toStringAsFixed(1)}% inflation.',
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Retirement corpus
+// ---------------------------------------------------------------------------
+class RetirementCalculatorScreen extends StatefulWidget {
+  const RetirementCalculatorScreen({super.key});
+  @override
+  State<RetirementCalculatorScreen> createState() => _RetireState();
+}
+
+class _RetireState extends State<RetirementCalculatorScreen> {
+  double _expense = 30000, _years = 25, _infl = 6;
+
+  @override
+  Widget build(BuildContext context) {
+    final r = Calculators.retirementCorpus(
+        monthlyExpense: _expense, yearsToRetire: _years, inflationPct: _infl);
+    return _CalcScaffold(
+      title: 'Retirement corpus',
+      sliders: [
+        _CalcSlider('Monthly expense now', _expense, 5000, 500000, 99,
+            (v) => setState(() => _expense = v), _money.format(_expense),
+            accent: AppColors.positive),
+        _CalcSlider('Years to retire', _years, 1, 40, 39,
+            (v) => setState(() => _years = v), '${_years.toStringAsFixed(0)} yrs',
+            accent: AppColors.positive),
+        _CalcSlider('Inflation', _infl, 1, 12, 44,
+            (v) => setState(() => _infl = v), '${_infl.toStringAsFixed(1)}% p.a.',
+            accent: AppColors.positive),
+      ],
+      result: _SimpleResult(
+        accent: AppColors.positive,
+        headline: 'Corpus needed',
+        value: _money.format(r.corpus),
+        footnote:
+            'To draw ${_money.format(r.futureMonthly)}/month at retirement (today\'s ${_money.format(_expense)}), using the 4% rule.',
       ),
     );
   }
@@ -170,8 +384,10 @@ class _CalcSlider extends StatelessWidget {
   final int divisions;
   final ValueChanged<double> onChanged;
   final String display;
+  final Color accent;
   const _CalcSlider(this.label, this.value, this.min, this.max, this.divisions,
-      this.onChanged, this.display);
+      this.onChanged, this.display,
+      {this.accent = AppColors.time});
 
   @override
   Widget build(BuildContext context) {
@@ -184,16 +400,23 @@ class _CalcSlider extends StatelessWidget {
           children: [
             Text(label, style: t.bodyMedium),
             Text(display,
-                style: t.bodyLarge?.copyWith(
-                    color: AppColors.time, fontWeight: FontWeight.w600)),
+                style: t.bodyLarge
+                    ?.copyWith(color: accent, fontWeight: FontWeight.w600)),
           ],
         ),
-        Slider(
-          value: value.clamp(min, max),
-          min: min,
-          max: max,
-          divisions: divisions,
-          onChanged: onChanged,
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            activeTrackColor: accent,
+            thumbColor: accent,
+            overlayColor: accent.withValues(alpha: 0.15),
+          ),
+          child: Slider(
+            value: value.clamp(min, max),
+            min: min,
+            max: max,
+            divisions: divisions,
+            onChanged: onChanged,
+          ),
         ),
       ],
     );
@@ -208,6 +431,7 @@ class _ResultCard extends StatelessWidget {
   final Color leftColor, rightColor;
   final String? bottomLabel;
   final double? bottomValue;
+  final Color accent;
 
   const _ResultCard({
     required this.headline,
@@ -221,6 +445,7 @@ class _ResultCard extends StatelessWidget {
     this.footnote,
     this.bottomLabel,
     this.bottomValue,
+    this.accent = AppColors.time,
   });
 
   @override
@@ -236,7 +461,7 @@ class _ResultCard extends StatelessWidget {
           Text(headline, style: t.labelSmall),
           const SizedBox(height: 4),
           Text(headlineValue,
-              style: t.displayLarge?.copyWith(color: AppColors.time)),
+              style: t.displayLarge?.copyWith(color: accent)),
           if (footnote != null) ...[
             const SizedBox(height: 4),
             Text(footnote!, style: t.bodyMedium),
@@ -294,6 +519,39 @@ class _ResultCard extends StatelessWidget {
         Text(_money.format(value),
             style: Theme.of(context).textTheme.bodyLarge),
       ],
+    );
+  }
+}
+
+/// Single big-number result with an optional footnote (for tools without a
+/// two-part breakdown).
+class _SimpleResult extends StatelessWidget {
+  final String headline, value;
+  final String? footnote;
+  final Color accent;
+  const _SimpleResult({
+    required this.headline,
+    required this.value,
+    this.footnote,
+    this.accent = AppColors.time,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(headline, style: t.labelSmall),
+          const SizedBox(height: 4),
+          Text(value, style: t.displayLarge?.copyWith(color: accent)),
+          if (footnote != null) ...[
+            const SizedBox(height: 8),
+            Text(footnote!, style: t.bodyMedium),
+          ],
+        ],
+      ),
     );
   }
 }

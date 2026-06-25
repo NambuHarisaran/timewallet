@@ -28,4 +28,34 @@ void main() {
     expect(r.emi, closeTo(10379, 5));
     expect(r.totalPayable, closeTo(r.emi * 60, 1));
   });
+
+  test('Goal SIP is the inverse of SIP', () {
+    final goal = Calculators.goalSip(
+        target: 1000000, annualRatePct: 12, years: 10);
+    // Investing the suggested monthly should reach the target.
+    final forward =
+        Calculators.sip(monthly: goal.monthly, annualRatePct: 12, years: 10);
+    expect(forward.futureValue, closeTo(1000000, 50));
+  });
+
+  test('FD compounds quarterly', () {
+    // 100000 at 8% quarterly for 5y = 100000*(1.02)^20 ≈ 148595
+    final r = Calculators.fd(principal: 100000, annualRatePct: 8, years: 5);
+    expect(r.futureValue, closeTo(148594.74, 5));
+    expect(r.returns, closeTo(r.futureValue - 100000, 1));
+  });
+
+  test('Inflation compounds the cost', () {
+    // 100000 at 6% for 10y = 179084.77
+    final v = Calculators.inflate(amount: 100000, ratePct: 6, years: 10);
+    expect(v, closeTo(179084.77, 5));
+  });
+
+  test('Retirement corpus uses inflated expense and the 4% rule', () {
+    final r = Calculators.retirementCorpus(
+        monthlyExpense: 30000, yearsToRetire: 0, inflationPct: 6);
+    // No years → futureMonthly == today; corpus = 30000*12*25.
+    expect(r.futureMonthly, closeTo(30000, 0.01));
+    expect(r.corpus, closeTo(30000 * 12 * 25, 1));
+  });
 }

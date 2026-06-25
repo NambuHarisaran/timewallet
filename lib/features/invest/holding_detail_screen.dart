@@ -139,11 +139,16 @@ class HoldingDetailScreen extends ConsumerWidget {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        h.type == AssetType.other
-                            ? 'Set a current price (edit ✏️) to see profit/loss.'
-                            : h.type == AssetType.stock
-                                ? 'Add the ticker symbol (edit ✏️) for live prices, or set one manually.'
-                                : 'Live gold price unavailable right now — set a price manually or refresh.',
+                        switch (h.type) {
+                          AssetType.other =>
+                            'Set a current price (edit ✏️) to see profit/loss.',
+                          AssetType.stock =>
+                            'Add the ticker symbol (edit ✏️) for live prices, or set one manually.',
+                          AssetType.mutualFund =>
+                            'Add the AMFI scheme code (edit ✏️) for live NAV, or set a price manually.',
+                          AssetType.gold =>
+                            'Live gold price unavailable right now — set a price manually or refresh.',
+                        },
                         style: t.bodyMedium,
                       ),
                     ),

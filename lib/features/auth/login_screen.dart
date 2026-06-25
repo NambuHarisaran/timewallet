@@ -34,6 +34,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   /// Signup requires a stronger password than Firebase's 6-char minimum.
   String? _validatePassword(String? v) {
     final s = v ?? '';
+    if (s.length > 128) return 'Too long (max 128 characters)';
     if (!_isSignUp) return s.length < 6 ? 'Min 6 characters' : null;
     if (s.length < 8) return 'Use at least 8 characters';
     if (!RegExp(r'[A-Za-z]').hasMatch(s) || !RegExp(r'\d').hasMatch(s)) {

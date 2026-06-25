@@ -1,19 +1,24 @@
+import '../../core/util/json_safe.dart';
+
 /// An investment the user holds: a stock, gold, or a generic asset.
 /// Phase 1 is fully manual — `manualPrice` is the current per-unit price the
 /// user types in. Phase 2 will fill it from a live quote instead.
-enum AssetType { stock, gold, other }
+// Order is persisted as the stored index — append new types at the END only.
+enum AssetType { stock, gold, other, mutualFund }
 
 extension AssetTypeX on AssetType {
   String get label => switch (this) {
         AssetType.stock => 'Stock',
         AssetType.gold => 'Gold',
         AssetType.other => 'Other',
+        AssetType.mutualFund => 'Mutual fund',
       };
 
   String get emoji => switch (this) {
         AssetType.stock => '📈',
         AssetType.gold => '🪙',
         AssetType.other => '💼',
+        AssetType.mutualFund => '📊',
       };
 
   /// Unit the `units` field is measured in.
@@ -21,6 +26,7 @@ extension AssetTypeX on AssetType {
         AssetType.stock => 'shares',
         AssetType.gold => 'grams',
         AssetType.other => 'units',
+        AssetType.mutualFund => 'units',
       };
 }
 
@@ -94,15 +100,14 @@ class Holding {
       };
 
   factory Holding.fromJson(Map<String, dynamic> j) => Holding(
-        id: j['id'],
-        type: AssetType.values[(j['type'] ?? 0) as int],
-        name: j['name'] ?? '',
-        symbol: j['symbol'],
-        units: (j['units'] ?? 0).toDouble(),
-        buyPrice: (j['buyPrice'] ?? 0).toDouble(),
-        buyDate: DateTime.parse(j['buyDate']),
-        manualPrice:
-            j['manualPrice'] == null ? null : (j['manualPrice']).toDouble(),
-        meta: j['meta'],
+        id: safeString(j['id']),
+        type: safeEnum(j['type'], AssetType.values, AssetType.other),
+        name: safeString(j['name']),
+        symbol: safeStringOrNull(j['symbol']),
+        units: safeDouble(j['units']),
+        buyPrice: safeDouble(j['buyPrice']),
+        buyDate: safeDate(j['buyDate']),
+        manualPrice: safeDoubleOrNull(j['manualPrice']),
+        meta: safeStringOrNull(j['meta']),
       );
 }

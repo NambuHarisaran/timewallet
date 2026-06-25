@@ -1,16 +1,82 @@
 rules_version = '2';
 
-// TimeWallet — each user can only touch their own document tree.
+// TimeWallet — each user can only touch their own document tree, AND every
+// write must match the expected shape/range/size. Unlisted paths are denied
+// (fail closed). Deletes carry no payload so they validate on ownership only.
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /users/{userId} {
-      allow read, write: if request.auth != null
-                         && request.auth.uid == userId;
 
-      // expenses, goals, holdings, state/* subcollections
-      match /{document=**} {
-        allow read, write: if request.auth != null
-                           && request.auth.uid == userId;
+    function owner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+    function strOk(v, max) {
+      return v is string && v.size() <= max;
+    }
+    function numOk(v) {
+      return v is number && v >= 0;
+    }
+    function intIn(v, lo, hi) {
+      return v is int && v >= lo && v <= hi;
+    }
+
+    match /users/{userId} {
+      // Profile document.
+      allow read: if owner(userId);
+      allow write: if owner(userId)
+                   && request.resource.data.size() <= 24
+                   && strOk(request.resource.data.name, 80);
+
+      match /expenses/{id} {
+        allow read, delete: if owner(userId);
+        allow write: if owner(userId)
+          && request.resource.data.size() <= 12
+          && numOk(request.resource.data.amount)
+          && intIn(request.resource.data.mood, 0, 2)
+          && intIn(request.resource.data.needWant, 0, 1)
+          && numOk(request.resource.data.timeCostMinutes)
+          && strOk(request.resource.data.categoryId, 40);
+      }
+
+      match /goals/{id} {
+        allow read, delete: if owner(userId);
+        allow write: if owner(userId)
+          && request.resource.data.size() <= 10
+          && numOk(request.resource.data.amount)
+          && numOk(request.resource.data.savedAmount)
+          && strOk(request.resource.data.title, 100)
+          && strOk(request.resource.data.emoji, 12);
+      }
+
+      match /holdings/{id} {
+        allow read, delete: if owner(userId);
+        allow write: if owner(userId)
+          && request.resource.data.size() <= 14
+          // 0..3 leaves room for the planned mutualFund asset type.
+          && intIn(request.resource.data.type, 0, 3)
+          && numOk(request.resource.data.units)
+          && numOk(request.resource.data.buyPrice)
+          && strOk(request.resource.data.name, 80);
+      }
+
+      match /activity/{id} {
+        allow read, delete: if owner(userId);
+        allow write: if owner(userId)
+          && request.resource.data.size() <= 10
+          && request.resource.data.type is int
+          && strOk(request.resource.data.title, 160);
+      }
+
+      match /budgets/{id} {
+        allow read, delete: if owner(userId);
+        allow write: if owner(userId)
+          && request.resource.data.size() <= 4
+          && strOk(request.resource.data.categoryId, 40)
+          && numOk(request.resource.data.monthlyLimit);
+      }
+
+      // Worked-minutes / stats maps and any future per-user state docs.
+      match /state/{doc} {
+        allow read, write: if owner(userId);
       }
     }
   }

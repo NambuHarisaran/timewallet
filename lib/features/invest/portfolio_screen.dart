@@ -199,6 +199,7 @@ class _AllocationBar extends StatelessWidget {
       AssetType.stock: AppColors.money,
       AssetType.gold: AppColors.time,
       AssetType.other: AppColors.positive,
+      AssetType.mutualFund: AppColors.accent,
     };
     final entries = summary.valueByType.entries
         .where((e) => e.value > 0)

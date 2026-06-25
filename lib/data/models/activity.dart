@@ -1,3 +1,5 @@
+import '../../core/util/json_safe.dart';
+
 /// One entry in the user's activity log. Written on every meaningful mutation
 /// so the History screen can show a chronological trail of what happened.
 enum ActivityType {
@@ -43,6 +45,7 @@ class ActivityLog {
   final String? subtitle;
   final double? amount; // optional ₹ value for the entry
   final DateTime at;
+  final String? refId; // id of the source doc (e.g. expense) for actions
 
   const ActivityLog({
     required this.id,
@@ -51,7 +54,15 @@ class ActivityLog {
     required this.at,
     this.subtitle,
     this.amount,
+    this.refId,
   });
+
+  /// Whether this entry points at a live expense that can be deleted.
+  bool get isExpenseRef =>
+      refId != null &&
+      (type == ActivityType.expenseAdded ||
+          type == ActivityType.expenseHeld ||
+          type == ActivityType.expenseBought);
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -60,14 +71,17 @@ class ActivityLog {
         'subtitle': subtitle,
         'amount': amount,
         'at': at.toIso8601String(),
+        'refId': refId,
       };
 
   factory ActivityLog.fromJson(Map<String, dynamic> j) => ActivityLog(
-        id: j['id'],
-        type: ActivityType.values[(j['type'] ?? 0) as int],
-        title: j['title'] ?? '',
-        subtitle: j['subtitle'],
-        amount: j['amount'] == null ? null : (j['amount']).toDouble(),
-        at: DateTime.parse(j['at']),
+        id: safeString(j['id']),
+        type: safeEnum(
+            j['type'], ActivityType.values, ActivityType.profileUpdated),
+        title: safeString(j['title']),
+        subtitle: safeStringOrNull(j['subtitle']),
+        amount: safeDoubleOrNull(j['amount']),
+        at: safeDate(j['at']),
+        refId: safeStringOrNull(j['refId']),
       );
 }

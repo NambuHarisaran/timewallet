@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../core/util/json_safe.dart';
 import '../models/activity.dart';
+import '../models/category_budget.dart';
 import '../models/expense.dart';
 import '../models/goal.dart';
 import '../models/holding.dart';
@@ -30,8 +32,26 @@ class FirestoreBackend implements DataBackend {
       _userDoc.collection('holdings');
   CollectionReference<Map<String, dynamic>> get _activity =>
       _userDoc.collection('activity');
+  CollectionReference<Map<String, dynamic>> get _budgets =>
+      _userDoc.collection('budgets');
   DocumentReference<Map<String, dynamic>> get _workedDoc =>
       _userDoc.collection('state').doc('worked');
+  DocumentReference<Map<String, dynamic>> get _statsDoc =>
+      _userDoc.collection('state').doc('stats');
+
+  /// Parses query docs, dropping any that fail. Model `fromJson`s are already
+  /// total (see json_safe.dart); this is belt-and-suspenders so a single
+  /// pathological document can never break an entire stream.
+  List<T> _parse<T>(QuerySnapshot<Map<String, dynamic>> q,
+      T Function(Map<String, dynamic>) from) {
+    final out = <T>[];
+    for (final d in q.docs) {
+      try {
+        out.add(from(d.data()));
+      } catch (_) {}
+    }
+    return out;
+  }
 
   // ---- Profile ----
   @override
@@ -59,7 +79,7 @@ class FirestoreBackend implements DataBackend {
     return _expenses
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((q) => q.docs.map((d) => Expense.fromJson(d.data())).toList());
+        .map((q) => _parse(q, Expense.fromJson));
   }
 
   @override
@@ -75,7 +95,7 @@ class FirestoreBackend implements DataBackend {
     return _goals
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((q) => q.docs.map((d) => Goal.fromJson(d.data())).toList());
+        .map((q) => _parse(q, Goal.fromJson));
   }
 
   @override
@@ -91,7 +111,7 @@ class FirestoreBackend implements DataBackend {
     return _holdings
         .orderBy('buyDate', descending: true)
         .snapshots()
-        .map((q) => q.docs.map((d) => Holding.fromJson(d.data())).toList());
+        .map((q) => _parse(q, Holding.fromJson));
   }
 
   @override
@@ -108,7 +128,7 @@ class FirestoreBackend implements DataBackend {
         .orderBy('at', descending: true)
         .limit(200)
         .snapshots()
-        .map((q) => q.docs.map((d) => ActivityLog.fromJson(d.data())).toList());
+        .map((q) => _parse(q, ActivityLog.fromJson));
   }
 
   @override
@@ -116,7 +136,44 @@ class FirestoreBackend implements DataBackend {
       _activity.doc(log.id).set(log.toJson());
 
   @override
+  Future<void> deleteActivity(String id) => _activity.doc(id).delete();
+
+  @override
   Future<void> clearActivity() => _deleteCollection(_activity);
+
+  // ---- Category budgets ----
+  @override
+  Stream<List<CategoryBudget>> watchBudgets() {
+    return _budgets
+        .snapshots()
+        .map((q) => _parse(q, CategoryBudget.fromJson));
+  }
+
+  @override
+  Future<void> upsertBudget(CategoryBudget b) =>
+      _budgets.doc(b.categoryId).set(b.toJson());
+
+  @override
+  Future<void> deleteBudget(String categoryId) =>
+      _budgets.doc(categoryId).delete();
+
+  // ---- Stats ----
+  @override
+  Stream<Map<String, double>> watchStats() {
+    return _statsDoc.snapshots().map((snap) {
+      final data = snap.data();
+      if (data == null) return <String, double>{};
+      return data.map((k, v) => MapEntry(k, safeDouble(v)));
+    });
+  }
+
+  @override
+  Future<void> addReclaimedMinutes(double minutes) {
+    return _statsDoc.set(
+      {'reclaimedMinutes': FieldValue.increment(minutes)},
+      SetOptions(merge: true),
+    );
+  }
 
   // ---- Worked minutes ----
   @override
@@ -124,7 +181,7 @@ class FirestoreBackend implements DataBackend {
     return _workedDoc.snapshots().map((snap) {
       final data = snap.data();
       if (data == null) return <String, double>{};
-      return data.map((k, v) => MapEntry(k, (v as num).toDouble()));
+      return data.map((k, v) => MapEntry(k, safeDouble(v)));
     });
   }
 
@@ -143,6 +200,7 @@ class FirestoreBackend implements DataBackend {
     await _deleteCollection(_goals);
     await _deleteCollection(_holdings);
     await _deleteCollection(_activity);
+    await _deleteCollection(_budgets);
     await _deleteCollection(_userDoc.collection('state'));
     await _userDoc.delete();
   }

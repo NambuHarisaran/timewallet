@@ -1,3 +1,5 @@
+import '../../core/util/json_safe.dart';
+
 class Goal {
   final String id;
   final String title;
@@ -37,11 +39,11 @@ class Goal {
       };
 
   factory Goal.fromJson(Map<String, dynamic> j) => Goal(
-        id: j['id'],
-        title: j['title'] ?? '',
-        emoji: j['emoji'] ?? '🎯',
-        amount: (j['amount'] ?? 0).toDouble(),
-        savedAmount: (j['savedAmount'] ?? 0).toDouble(),
-        createdAt: DateTime.parse(j['createdAt']),
+        id: safeString(j['id']),
+        title: safeString(j['title']),
+        emoji: safeString(j['emoji'], '🎯'),
+        amount: safeDouble(j['amount']),
+        savedAmount: safeDouble(j['savedAmount']),
+        createdAt: safeDate(j['createdAt']),
       );
 }

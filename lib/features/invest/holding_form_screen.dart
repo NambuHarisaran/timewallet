@@ -223,16 +223,29 @@ class _HoldingFormScreenState extends ConsumerState<HoldingFormScreen> {
                 trailing: const Icon(Icons.chevron_right),
                 onTap: _pickDate,
               ),
-              if (_type == AssetType.stock) ...[
+              if (_type == AssetType.stock ||
+                  _type == AssetType.mutualFund) ...[
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _symbol,
                   textCapitalization: TextCapitalization.characters,
-                  decoration: const InputDecoration(
-                    labelText: 'Ticker symbol (optional)',
-                    hintText: 'RELIANCE.NS',
-                    helperText: 'Needed for live prices (NSE = .NS, BSE = .BO)',
+                  decoration: InputDecoration(
+                    labelText: _type == AssetType.mutualFund
+                        ? 'Scheme code (optional)'
+                        : 'Ticker symbol (optional)',
+                    hintText:
+                        _type == AssetType.mutualFund ? '118726' : 'RELIANCE.NS',
+                    helperText: _type == AssetType.mutualFund
+                        ? 'AMFI scheme code — live NAV via mfapi.in'
+                        : 'Needed for live prices (NSE = .NS, BSE = .BO)',
                   ),
+                  validator: (v) {
+                    final s = (v ?? '').trim();
+                    if (s.isEmpty) return null;
+                    return RegExp(r'^[A-Za-z0-9.\-]{1,15}$').hasMatch(s)
+                        ? null
+                        : 'Letters, numbers, . and - only (max 15)';
+                  },
                 ),
               ],
               const SizedBox(height: 28),
@@ -253,6 +266,7 @@ class _HoldingFormScreenState extends ConsumerState<HoldingFormScreen> {
         AssetType.stock => 'share',
         AssetType.gold => 'gram',
         AssetType.other => 'unit',
+        AssetType.mutualFund => 'unit',
       };
 
   String? _positive(String? v) {

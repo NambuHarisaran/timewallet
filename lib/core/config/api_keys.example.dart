@@ -7,6 +7,10 @@ class ApiKeys {
   /// GoldAPI.io (gold price). Get a free key at https://www.goldapi.io
   static const String goldApi = '';
 
+  /// Twelve Data (stock fallback, optional). https://twelvedata.com
+  static const String twelveData = '';
+
   static bool get hasFinnhub => finnhub.isNotEmpty;
   static bool get hasGoldApi => goldApi.isNotEmpty;
+  static bool get hasTwelveData => twelveData.isNotEmpty;
 }

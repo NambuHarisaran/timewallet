@@ -1,4 +1,5 @@
 import '../../core/time/time_engine.dart';
+import '../../core/util/json_safe.dart';
 
 enum Persona { student, freelancer, employee, owner }
 
@@ -97,15 +98,16 @@ class UserProfile {
       };
 
   factory UserProfile.fromJson(Map<String, dynamic> j) => UserProfile(
-        name: j['name'] ?? '',
-        age: (j['age'] ?? 0).toInt(),
-        persona: Persona.values[j['persona'] ?? 3],
-        incomeType: IncomeType.values[j['incomeType'] ?? 0],
-        monthlyIncome: (j['monthlyIncome'] ?? 0).toDouble(),
-        hourlyRate: (j['hourlyRate'] ?? 0).toDouble(),
-        workDaysPerWeek: (j['workDaysPerWeek'] ?? 5).toDouble(),
-        hoursPerDay: (j['hoursPerDay'] ?? 8).toDouble(),
-        onboarded: j['onboarded'] ?? false,
-        currencySymbol: j['currencySymbol'] ?? '₹',
+        name: safeString(j['name']),
+        age: safeInt(j['age']),
+        persona: safeEnum(j['persona'], Persona.values, Persona.employee),
+        incomeType:
+            safeEnum(j['incomeType'], IncomeType.values, IncomeType.fixed),
+        monthlyIncome: safeDouble(j['monthlyIncome']),
+        hourlyRate: safeDouble(j['hourlyRate']),
+        workDaysPerWeek: safeDouble(j['workDaysPerWeek'], 5),
+        hoursPerDay: safeDouble(j['hoursPerDay'], 8),
+        onboarded: j['onboarded'] == true,
+        currencySymbol: safeString(j['currencySymbol'], '₹'),
       );
 }

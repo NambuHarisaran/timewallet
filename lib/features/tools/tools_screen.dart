@@ -18,12 +18,22 @@ class ToolsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tools = <_Tool>[
+      _Tool('⏳', 'Money → time', 'See any amount as work-time',
+          AppColors.time, () => const TimeValueScreen()),
       _Tool('📈', 'SIP calculator', 'Grow wealth with monthly investing',
           AppColors.positive, () => const SipCalculatorScreen()),
+      _Tool('🎯', 'Goal SIP', 'Monthly amount to hit a target',
+          AppColors.accent, () => const GoalSipCalculatorScreen()),
       _Tool('💰', 'Lumpsum calculator', 'One-time investment growth',
           AppColors.money, () => const LumpsumCalculatorScreen()),
-      _Tool('🏦', 'EMI calculator', 'Loan monthly payment & interest',
-          AppColors.time, () => const EmiCalculatorScreen()),
+      _Tool('🏦', 'FD calculator', 'Fixed deposit maturity', AppColors.money,
+          () => const FdCalculatorScreen()),
+      _Tool('🏠', 'EMI calculator', 'Loan monthly payment & interest',
+          AppColors.warn, () => const EmiCalculatorScreen()),
+      _Tool('📉', 'Inflation impact', 'Future cost of money', AppColors.warn,
+          () => const InflationCalculatorScreen()),
+      _Tool('🌴', 'Retirement', "Corpus you'll need", AppColors.positive,
+          () => const RetirementCalculatorScreen()),
     ];
 
     return Scaffold(

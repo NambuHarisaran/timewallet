@@ -61,7 +61,7 @@ class HistoryScreen extends ConsumerWidget {
                           children: [
                             for (var k = 0; k < g.items.length; k++) ...[
                               if (k > 0) const Divider(height: 1),
-                              _ActivityRow(log: g.items[k]),
+                              _row(context, ref, g.items[k]),
                             ],
                           ],
                         ),
@@ -74,6 +74,42 @@ class HistoryScreen extends ConsumerWidget {
           );
         },
       ),
+    );
+  }
+
+  /// Wraps expense-referencing rows in swipe-to-delete; others render plain.
+  Widget _row(BuildContext context, WidgetRef ref, ActivityLog log) {
+    final row = _ActivityRow(log: log);
+    if (!log.isExpenseRef) return row;
+    return Dismissible(
+      key: ValueKey(log.id),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        color: AppColors.warn.withValues(alpha: 0.25),
+        child: const Icon(Icons.delete_outline, color: AppColors.warn),
+      ),
+      confirmDismiss: (_) => showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Delete expense?'),
+          content: const Text('This removes the expense and this log entry.'),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel')),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: AppColors.warn),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Delete'),
+            ),
+          ],
+        ),
+      ),
+      onDismissed: (_) =>
+          ref.read(appActionsProvider).deleteExpenseEntry(log),
+      child: row,
     );
   }
 
