@@ -108,6 +108,25 @@ class Calculators {
     );
   }
 
+  /// Months until [savings] + monthly [monthlyInvest] (compounding at
+  /// [annualRatePct]) reaches [targetCorpus]. Caps at 1200 (= 100y, "never").
+  static int monthsToFreedom({
+    required double savings,
+    required double monthlyInvest,
+    required double annualRatePct,
+    required double targetCorpus,
+  }) {
+    if (targetCorpus <= 0 || savings >= targetCorpus) return 0;
+    final i = annualRatePct / 12 / 100;
+    var bal = savings;
+    var m = 0;
+    while (bal < targetCorpus && m < 1200) {
+      bal = bal * (1 + i) + monthlyInvest;
+      m++;
+    }
+    return m;
+  }
+
   /// EMI for a loan. Returns monthly payment, total payable, total interest.
   static EmiResult emi({
     required double principal,

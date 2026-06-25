@@ -63,7 +63,9 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Center(child: Text('📧', style: TextStyle(fontSize: 56))),
+            Center(
+              child: Icon(Icons.mark_email_unread_outlined,
+                  size: 56, color: Theme.of(context).colorScheme.primary)),
             const SizedBox(height: 16),
             Text('Verify your email',
                 textAlign: TextAlign.center, style: t.headlineMedium),

@@ -25,12 +25,13 @@ class _SalarySetupScreenState extends ConsumerState<SalarySetupScreen> {
   final _rate = TextEditingController();
   double _daysPerWeek = 5;
   double _hoursPerDay = 8;
+  int _workDayStartHour = 0;
 
-  static const _personaLabels = {
-    Persona.student: ('🎓', 'Student'),
-    Persona.freelancer: ('💻', 'Freelancer'),
-    Persona.employee: ('🏢', 'Employee'),
-    Persona.owner: ('🚀', 'Owner'),
+  static const Map<Persona, (IconData, String)> _personaLabels = {
+    Persona.student: (Icons.school_outlined, 'Student'),
+    Persona.freelancer: (Icons.laptop_mac, 'Freelancer'),
+    Persona.employee: (Icons.work_outline, 'Employee'),
+    Persona.owner: (Icons.rocket_launch_outlined, 'Owner'),
   };
 
   static const _incomeLabels = {
@@ -73,6 +74,7 @@ class _SalarySetupScreenState extends ConsumerState<SalarySetupScreen> {
       hourlyRate: double.tryParse(_rate.text) ?? 0,
       workDaysPerWeek: _daysPerWeek,
       hoursPerDay: _hoursPerDay,
+      workDayStartHour: _workDayStartHour,
       onboarded: true,
     );
     ref.read(appActionsProvider).saveProfile(profile);
@@ -122,9 +124,10 @@ class _SalarySetupScreenState extends ConsumerState<SalarySetupScreen> {
             spacing: 10,
             runSpacing: 10,
             children: Persona.values.map((p) {
-              final (emoji, label) = _personaLabels[p]!;
+              final (icon, label) = _personaLabels[p]!;
               return ChoiceChip(
-                label: Text('$emoji  $label'),
+                avatar: Icon(icon, size: 18),
+                label: Text(label),
                 selected: p == _persona,
                 onSelected: (_) => setState(() => _persona = p),
               );
@@ -162,6 +165,22 @@ class _SalarySetupScreenState extends ConsumerState<SalarySetupScreen> {
                 (v) => setState(() => _daysPerWeek = v)),
             _slider('Hours / day', _hoursPerDay, 1, 16, 15,
                 (v) => setState(() => _hoursPerDay = v)),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 10,
+              children: [
+                ChoiceChip(
+                  label: const Text('Day shift'),
+                  selected: _workDayStartHour == 0,
+                  onSelected: (_) => setState(() => _workDayStartHour = 0),
+                ),
+                ChoiceChip(
+                  label: const Text('Night shift'),
+                  selected: _workDayStartHour != 0,
+                  onSelected: (_) => setState(() => _workDayStartHour = 12),
+                ),
+              ],
+            ),
           ],
           const SizedBox(height: 16),
           GradientCard(

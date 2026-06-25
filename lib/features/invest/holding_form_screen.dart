@@ -129,7 +129,8 @@ class _HoldingFormScreenState extends ConsumerState<HoldingFormScreen> {
                 spacing: 8,
                 children: AssetType.values.map((ty) {
                   return ChoiceChip(
-                    label: Text('${ty.emoji} ${ty.label}'),
+                    avatar: Icon(ty.icon, size: 18),
+                    label: Text(ty.label),
                     selected: _type == ty,
                     onSelected: (_) => setState(() {
                       _type = ty;

@@ -10,6 +10,21 @@ import '../../widgets/progress_ring.dart';
 import '../../widgets/responsive_body.dart';
 import '../../widgets/section_card.dart';
 
+/// Curated goal icons. The map key is stored on the goal (in the `emoji`
+/// field) so existing data keeps working; unknown keys fall back to a flag.
+const Map<String, IconData> goalIcons = {
+  'target': Icons.flag,
+  'phone': Icons.smartphone,
+  'travel': Icons.flight_takeoff,
+  'laptop': Icons.laptop_mac,
+  'home': Icons.home_outlined,
+  'car': Icons.directions_car_filled_outlined,
+  'edu': Icons.school_outlined,
+  'ring': Icons.diamond_outlined,
+};
+
+IconData goalIconFor(String key) => goalIcons[key] ?? Icons.flag;
+
 class GoalsScreen extends ConsumerWidget {
   const GoalsScreen({super.key});
 
@@ -45,7 +60,7 @@ class GoalsScreen extends ConsumerWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('🎯', style: TextStyle(fontSize: 64)),
+            const Icon(Icons.flag_outlined, size: 64, color: AppColors.money),
             const SizedBox(height: 16),
             Text('No goals yet', style: t.titleLarge),
             const SizedBox(height: 8),
@@ -68,8 +83,7 @@ class GoalsScreen extends ConsumerWidget {
   void _addGoalSheet(BuildContext context, WidgetRef ref) {
     final title = TextEditingController();
     final amount = TextEditingController();
-    String emoji = '🎯';
-    const emojis = ['🎯', '📱', '✈️', '💻', '🏠', '🚗', '🎓', '💍'];
+    String emoji = 'target';
 
     showModalBottomSheet(
       context: context,
@@ -92,11 +106,15 @@ class GoalsScreen extends ConsumerWidget {
               const SizedBox(height: 16),
               Wrap(
                 spacing: 8,
-                children: emojis.map((e) {
+                children: goalIcons.keys.map((k) {
+                  final selected = emoji == k;
                   return ChoiceChip(
-                    label: Text(e, style: const TextStyle(fontSize: 18)),
-                    selected: emoji == e,
-                    onSelected: (_) => setSheet(() => emoji = e),
+                    showCheckmark: false,
+                    label: Icon(goalIcons[k],
+                        size: 20,
+                        color: selected ? AppColors.accent : null),
+                    selected: selected,
+                    onSelected: (_) => setSheet(() => emoji = k),
                   );
                 }).toList(),
               ),
@@ -155,7 +173,7 @@ class _GoalTile extends ConsumerWidget {
             stroke: 7,
             color: AppColors.money,
             trackColor: AppColors.darkBorder,
-            center: Text(goal.emoji, style: const TextStyle(fontSize: 24)),
+            center: Icon(goalIconFor(goal.emoji), color: AppColors.money),
           ),
           const SizedBox(width: 16),
           Expanded(

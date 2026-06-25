@@ -6,6 +6,7 @@ import '../models/category_budget.dart';
 import '../models/expense.dart';
 import '../models/goal.dart';
 import '../models/holding.dart';
+import '../models/recurring_expense.dart';
 import '../models/user_profile.dart';
 import 'data_backend.dart';
 
@@ -34,6 +35,8 @@ class FirestoreBackend implements DataBackend {
       _userDoc.collection('activity');
   CollectionReference<Map<String, dynamic>> get _budgets =>
       _userDoc.collection('budgets');
+  CollectionReference<Map<String, dynamic>> get _recurring =>
+      _userDoc.collection('recurring');
   DocumentReference<Map<String, dynamic>> get _workedDoc =>
       _userDoc.collection('state').doc('worked');
   DocumentReference<Map<String, dynamic>> get _statsDoc =>
@@ -157,6 +160,21 @@ class FirestoreBackend implements DataBackend {
   Future<void> deleteBudget(String categoryId) =>
       _budgets.doc(categoryId).delete();
 
+  // ---- Recurring / subscriptions ----
+  @override
+  Stream<List<RecurringExpense>> watchRecurring() {
+    return _recurring
+        .snapshots()
+        .map((q) => _parse(q, RecurringExpense.fromJson));
+  }
+
+  @override
+  Future<void> upsertRecurring(RecurringExpense r) =>
+      _recurring.doc(r.id).set(r.toJson());
+
+  @override
+  Future<void> deleteRecurring(String id) => _recurring.doc(id).delete();
+
   // ---- Stats ----
   @override
   Stream<Map<String, double>> watchStats() {
@@ -201,6 +219,7 @@ class FirestoreBackend implements DataBackend {
     await _deleteCollection(_holdings);
     await _deleteCollection(_activity);
     await _deleteCollection(_budgets);
+    await _deleteCollection(_recurring);
     await _deleteCollection(_userDoc.collection('state'));
     await _userDoc.delete();
   }

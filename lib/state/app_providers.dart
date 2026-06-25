@@ -12,6 +12,7 @@ import '../data/models/category_budget.dart';
 import '../data/models/expense.dart';
 import '../data/models/goal.dart';
 import '../data/models/holding.dart';
+import '../data/models/recurring_expense.dart';
 import '../data/models/user_profile.dart';
 import '../services/auth_service.dart';
 import '../services/price_provider.dart';
@@ -25,6 +26,13 @@ const _uuid = Uuid();
 
 String dayKey([DateTime? d]) {
   final t = d ?? DateTime.now();
+  return '${t.year}-${t.month}-${t.day}';
+}
+
+/// Work-day key, shifted by [startHour] so a night shift crossing midnight
+/// counts as one work-day. startHour 0 == calendar day.
+String workDayKey(int startHour, [DateTime? d]) {
+  final t = (d ?? DateTime.now()).subtract(Duration(hours: startHour));
   return '${t.year}-${t.month}-${t.day}';
 }
 
@@ -81,6 +89,15 @@ final budgetsProvider = StreamProvider<List<CategoryBudget>>(
 final statsProvider = StreamProvider<Map<String, double>>(
     (ref) => ref.watch(backendProvider).watchStats());
 
+final recurringProvider = StreamProvider<List<RecurringExpense>>(
+    (ref) => ref.watch(backendProvider).watchRecurring());
+
+/// Total monthly cost of all subscriptions (normalised across cycles).
+final monthlyRecurringCostProvider = Provider<double>((ref) {
+  final list = ref.watch(recurringProvider).asData?.value ?? const [];
+  return list.fold(0.0, (a, r) => a + r.monthlyAmount);
+});
+
 /// Lifetime minutes reclaimed by skipping held wants.
 final reclaimedMinutesProvider = Provider<double>(
     (ref) => ref.watch(statsProvider).asData?.value['reclaimedMinutes'] ?? 0);
@@ -103,13 +120,15 @@ final categorySpendProvider = Provider<Map<String, double>>((ref) {
 final streakProvider = Provider<int>((ref) {
   final worked = ref.watch(workedProvider).asData?.value ?? const {};
   if (worked.isEmpty) return 0;
+  final startHour = ref.watch(profileOrDefaultProvider).workDayStartHour;
   var streak = 0;
-  var day = DateTime.now();
+  var day = DateTime.now().subtract(Duration(hours: startHour));
   // Allow the streak to stand if today isn't logged yet but yesterday was.
-  if ((worked[dayKey(day)] ?? 0) <= 0) {
+  String k(DateTime d) => '${d.year}-${d.month}-${d.day}';
+  if ((worked[k(day)] ?? 0) <= 0) {
     day = day.subtract(const Duration(days: 1));
   }
-  while ((worked[dayKey(day)] ?? 0) > 0) {
+  while ((worked[k(day)] ?? 0) > 0) {
     streak++;
     day = day.subtract(const Duration(days: 1));
   }
@@ -146,7 +165,16 @@ final monthSpendProvider = Provider<double>((ref) {
 
 final workedTodayProvider = Provider<double>((ref) {
   final map = ref.watch(workedProvider).asData?.value ?? const {};
-  return map[dayKey()] ?? 0;
+  final startHour = ref.watch(profileOrDefaultProvider).workDayStartHour;
+  return map[workDayKey(startHour)] ?? 0;
+});
+
+/// Minutes still loggable in the current shift (0 once the daily target hit).
+final workRemainingProvider = Provider<double>((ref) {
+  final profile = ref.watch(profileOrDefaultProvider);
+  final target = profile.hoursPerDay * 60;
+  final done = ref.watch(workedTodayProvider);
+  return (target - done).clamp(0, target).toDouble();
 });
 
 /// Rolled-up portfolio totals across every holding.
@@ -336,7 +364,7 @@ class AppActions {
     await _log(
       hold ? ActivityType.expenseHeld : ActivityType.expenseAdded,
       hold ? 'Put on 24h hold' : 'Added expense',
-      subtitle: hasNote ? '${cat.label} · $trimmed' : '${cat.emoji} ${cat.label}',
+      subtitle: hasNote ? '${cat.label} · $trimmed' : cat.label,
       amount: amount,
       refId: e.id,
     );
@@ -376,8 +404,7 @@ class AppActions {
       amount: amount,
       createdAt: DateTime.now(),
     ));
-    await _log(ActivityType.goalAdded, 'New goal: $title',
-        subtitle: emoji, amount: amount);
+    await _log(ActivityType.goalAdded, 'New goal: $title', amount: amount);
   }
 
   Future<void> addSaving(Goal g, double delta) async {
@@ -430,13 +457,20 @@ class AppActions {
     await _log(ActivityType.holdingDeleted, 'Deleted holding');
   }
 
-  Future<void> logWork(double minutes) async {
-    await _b.addWorkedMinutes(dayKey(), minutes);
-    final h = (minutes / 60);
+  /// Logs work for the current shift, clamped so the daily target can't be
+  /// exceeded. Returns the minutes actually logged (0 if the shift is done).
+  Future<double> logWork(double minutes) async {
+    final profile = _ref.read(profileOrDefaultProvider);
+    final remaining = _ref.read(workRemainingProvider);
+    final add = minutes.clamp(0, remaining).toDouble();
+    if (add <= 0) return 0;
+    await _b.addWorkedMinutes(workDayKey(profile.workDayStartHour), add);
+    final h = (add / 60);
     await _log(ActivityType.workLogged, 'Logged work',
         subtitle: h >= 1
             ? '${h.toStringAsFixed(h % 1 == 0 ? 0 : 1)}h'
-            : '${minutes.toStringAsFixed(0)}m');
+            : '${add.toStringAsFixed(0)}m');
+    return add;
   }
 
   Future<void> setBudget(String categoryId, double monthlyLimit) => _b
@@ -444,6 +478,36 @@ class AppActions {
           categoryId: categoryId, monthlyLimit: monthlyLimit));
 
   Future<void> deleteBudget(String categoryId) => _b.deleteBudget(categoryId);
+
+  Future<void> addRecurring({
+    required String name,
+    required double amount,
+    required BillingCycle cycle,
+    required String categoryId,
+  }) async {
+    await _b.upsertRecurring(RecurringExpense(
+      id: _uuid.v4(),
+      name: name,
+      amount: amount,
+      cycle: cycle,
+      categoryId: categoryId,
+    ));
+    await _log(ActivityType.expenseAdded, 'Added subscription: $name',
+        subtitle: cycle.label, amount: amount);
+  }
+
+  Future<void> deleteRecurring(String id) => _b.deleteRecurring(id);
+
+  /// "Worth it?" decision to skip a purchase: banks the work-time it would
+  /// have cost, no expense recorded.
+  Future<void> skipPurchase({
+    required double minutes,
+    required String categoryLabel,
+  }) async {
+    if (minutes > 0) await _b.addReclaimedMinutes(minutes);
+    await _log(ActivityType.expenseSkipped, 'Decided to skip a buy',
+        subtitle: categoryLabel);
+  }
 
   /// Deletes an expense referenced from a history row, plus that log entry.
   Future<void> deleteExpenseEntry(ActivityLog log) async {

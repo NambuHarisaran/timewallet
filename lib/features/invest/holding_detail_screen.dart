@@ -63,7 +63,7 @@ class HoldingDetailScreen extends ConsumerWidget {
                 children: [
                   Row(
                     children: [
-                      Text(h.type.emoji, style: const TextStyle(fontSize: 28)),
+                      Icon(h.type.icon, size: 26, color: AppColors.money),
                       const SizedBox(width: 10),
                       Text('${h.type.label}${h.meta != null ? ' · ${h.meta}' : ''}',
                           style: t.labelSmall),
@@ -135,7 +135,8 @@ class HoldingDetailScreen extends ConsumerWidget {
               SectionCard(
                 child: Row(
                   children: [
-                    const Text('ℹ️', style: TextStyle(fontSize: 20)),
+                    const Icon(Icons.info_outline,
+                        size: 20, color: AppColors.money),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(

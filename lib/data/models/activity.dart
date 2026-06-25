@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 import '../../core/util/json_safe.dart';
 
 /// One entry in the user's activity log. Written on every meaningful mutation
@@ -20,21 +22,21 @@ enum ActivityType {
 }
 
 extension ActivityTypeX on ActivityType {
-  String get emoji => switch (this) {
-        ActivityType.expenseAdded => '💸',
-        ActivityType.expenseHeld => '⏸️',
-        ActivityType.expenseBought => '🛒',
-        ActivityType.expenseSkipped => '🎉',
-        ActivityType.expenseDeleted => '🗑️',
-        ActivityType.workLogged => '⏱️',
-        ActivityType.goalAdded => '🎯',
-        ActivityType.goalSaved => '💰',
-        ActivityType.goalDeleted => '🗑️',
-        ActivityType.holdingAdded => '📈',
-        ActivityType.holdingUpdated => '✏️',
-        ActivityType.holdingDeleted => '🗑️',
-        ActivityType.profileUpdated => '👤',
-        ActivityType.incomeReset => '♻️',
+  IconData get icon => switch (this) {
+        ActivityType.expenseAdded => Icons.payments_outlined,
+        ActivityType.expenseHeld => Icons.pause_circle_outline,
+        ActivityType.expenseBought => Icons.shopping_cart_outlined,
+        ActivityType.expenseSkipped => Icons.celebration_outlined,
+        ActivityType.expenseDeleted => Icons.delete_outline,
+        ActivityType.workLogged => Icons.timer_outlined,
+        ActivityType.goalAdded => Icons.flag_outlined,
+        ActivityType.goalSaved => Icons.savings_outlined,
+        ActivityType.goalDeleted => Icons.delete_outline,
+        ActivityType.holdingAdded => Icons.show_chart,
+        ActivityType.holdingUpdated => Icons.edit_outlined,
+        ActivityType.holdingDeleted => Icons.delete_outline,
+        ActivityType.profileUpdated => Icons.person_outline,
+        ActivityType.incomeReset => Icons.refresh,
       };
 }
 

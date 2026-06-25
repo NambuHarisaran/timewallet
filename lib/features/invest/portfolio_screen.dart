@@ -262,7 +262,7 @@ class _HoldingTile extends StatelessWidget {
       child: SectionCard(
         child: Row(
           children: [
-            Text(h.type.emoji, style: const TextStyle(fontSize: 28)),
+            Icon(h.type.icon, size: 26, color: AppColors.money),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
@@ -316,7 +316,8 @@ class _Empty extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('📊', style: TextStyle(fontSize: 64)),
+            const Icon(Icons.pie_chart_outline,
+                size: 64, color: AppColors.money),
             const SizedBox(height: 16),
             Text('No investments yet', style: t.titleLarge),
             const SizedBox(height: 8),

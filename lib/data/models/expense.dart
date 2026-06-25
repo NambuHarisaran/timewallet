@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 import '../../core/util/json_safe.dart';
 
 enum NeedWant { need, want }
@@ -5,17 +7,17 @@ enum NeedWant { need, want }
 class ExpenseCategory {
   final String id;
   final String label;
-  final String emoji;
-  const ExpenseCategory(this.id, this.label, this.emoji);
+  final IconData icon;
+  const ExpenseCategory(this.id, this.label, this.icon);
 
   static const List<ExpenseCategory> all = [
-    ExpenseCategory('food', 'Food', '🍔'),
-    ExpenseCategory('travel', 'Travel', '🚕'),
-    ExpenseCategory('shopping', 'Shopping', '🛍️'),
-    ExpenseCategory('bills', 'Bills', '🧾'),
-    ExpenseCategory('fun', 'Fun', '🎮'),
-    ExpenseCategory('health', 'Health', '💊'),
-    ExpenseCategory('other', 'Other', '⋯'),
+    ExpenseCategory('food', 'Food', Icons.restaurant),
+    ExpenseCategory('travel', 'Travel', Icons.directions_car_filled_outlined),
+    ExpenseCategory('shopping', 'Shopping', Icons.shopping_bag_outlined),
+    ExpenseCategory('bills', 'Bills', Icons.receipt_long_outlined),
+    ExpenseCategory('fun', 'Fun', Icons.sports_esports_outlined),
+    ExpenseCategory('health', 'Health', Icons.favorite_border),
+    ExpenseCategory('other', 'Other', Icons.more_horiz),
   ];
 
   static ExpenseCategory byId(String id) =>

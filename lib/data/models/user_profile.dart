@@ -18,6 +18,10 @@ class UserProfile {
   final bool onboarded;
   final String currencySymbol;
 
+  /// Hour (0–23) at which the work-day resets. Day shift = 0 (midnight);
+  /// night shift = 12 (noon) so a shift crossing midnight stays one day.
+  final int workDayStartHour;
+
   const UserProfile({
     this.name = '',
     this.age = 0,
@@ -29,7 +33,10 @@ class UserProfile {
     this.hoursPerDay = 8,
     this.onboarded = false,
     this.currencySymbol = '₹',
+    this.workDayStartHour = 0,
   });
+
+  bool get isNightShift => workDayStartHour != 0;
 
   /// Earnings per worked hour. Zero for allowance (no work) -> disables time mode.
   double get effectiveHourlyRate {
@@ -69,6 +76,7 @@ class UserProfile {
     double? hoursPerDay,
     bool? onboarded,
     String? currencySymbol,
+    int? workDayStartHour,
   }) {
     return UserProfile(
       name: name ?? this.name,
@@ -81,6 +89,7 @@ class UserProfile {
       hoursPerDay: hoursPerDay ?? this.hoursPerDay,
       onboarded: onboarded ?? this.onboarded,
       currencySymbol: currencySymbol ?? this.currencySymbol,
+      workDayStartHour: workDayStartHour ?? this.workDayStartHour,
     );
   }
 
@@ -95,6 +104,7 @@ class UserProfile {
         'hoursPerDay': hoursPerDay,
         'onboarded': onboarded,
         'currencySymbol': currencySymbol,
+        'workDayStartHour': workDayStartHour,
       };
 
   factory UserProfile.fromJson(Map<String, dynamic> j) => UserProfile(
@@ -109,5 +119,6 @@ class UserProfile {
         hoursPerDay: safeDouble(j['hoursPerDay'], 8),
         onboarded: j['onboarded'] == true,
         currencySymbol: safeString(j['currencySymbol'], '₹'),
+        workDayStartHour: safeInt(j['workDayStartHour']),
       );
 }

@@ -18,7 +18,10 @@ class AuroraBackground extends StatelessWidget {
 
     return Positioned.fill(
       child: IgnorePointer(
-        child: Container(
+        // Static + painted once; RepaintBoundary stops it repainting when
+        // foreground animations (tickers) tick.
+        child: RepaintBoundary(
+          child: Container(
           color: base,
           child: Stack(
             children: [
@@ -45,6 +48,7 @@ class AuroraBackground extends StatelessWidget {
               ),
             ],
           ),
+          ),
         ),
       ),
     );
@@ -65,7 +69,7 @@ class AuroraBackground extends StatelessWidget {
       right: right,
       bottom: bottom,
       child: ImageFiltered(
-        imageFilter: ImageFilter.blur(sigmaX: 90, sigmaY: 90),
+        imageFilter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
         child: Container(
           width: size,
           height: size,

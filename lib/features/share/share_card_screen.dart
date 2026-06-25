@@ -49,7 +49,8 @@ class _ShareCardScreenState extends State<ShareCardScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('⏳', style: TextStyle(fontSize: 40)),
+                        const Icon(Icons.hourglass_bottom,
+                            size: 40, color: Colors.white),
                         const Spacer(),
                         Text(
                           widget.headline,

@@ -62,7 +62,8 @@ class InsightsScreen extends ConsumerWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text('📊', style: TextStyle(fontSize: 64)),
+                    const Icon(Icons.insights_outlined,
+                        size: 64, color: AppColors.money),
                     const SizedBox(height: 16),
                     Text('No spending to analyse yet', style: t.titleLarge),
                   ],
@@ -129,7 +130,7 @@ class InsightsScreen extends ConsumerWidget {
                           return Padding(
                             padding: const EdgeInsets.symmetric(vertical: 6),
                             child: _Bar(
-                              label: '${cat.emoji} ${cat.label}',
+                              label: cat.label,
                               value: e.value,
                               total: monthTotal,
                               color: AppColors.accent,

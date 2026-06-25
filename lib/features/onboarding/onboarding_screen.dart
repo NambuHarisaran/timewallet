@@ -5,16 +5,17 @@ import '../../widgets/responsive_body.dart';
 import '../salary/salary_setup_screen.dart';
 
 class _Slide {
-  final String emoji, title, body;
-  const _Slide(this.emoji, this.title, this.body);
+  final IconData icon;
+  final String title, body;
+  const _Slide(this.icon, this.title, this.body);
 }
 
 const _slides = [
-  _Slide('⏳', 'Money is time',
+  _Slide(Icons.hourglass_bottom, 'Money is time',
       'Every rupee you spend is a slice of your life. TimeWallet shows the real cost.'),
-  _Slide('☕', 'See it instantly',
+  _Slide(Icons.local_cafe_outlined, 'See it instantly',
       'That coffee? 18 minutes of work. That phone? 17 days. Decide with clarity.'),
-  _Slide('🎯', 'Buy back your life',
+  _Slide(Icons.flag_outlined, 'Buy back your life',
       'Skip impulse buys, hit goals, and watch the hours you reclaim add up.'),
 ];
 
@@ -67,7 +68,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(s.emoji, style: const TextStyle(fontSize: 72)),
+                        Icon(s.icon, size: 72, color: AppColors.money),
                         const SizedBox(height: 32),
                         Text(s.title, style: t.displayLarge),
                         const SizedBox(height: 16),

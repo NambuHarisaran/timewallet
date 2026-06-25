@@ -32,7 +32,7 @@ class BudgetsScreen extends ConsumerWidget {
             ...ExpenseCategory.all.map((c) {
               final limit = limits[c.id] ?? 0;
               return ListTile(
-                leading: Text(c.emoji, style: const TextStyle(fontSize: 24)),
+                leading: Icon(c.icon, color: AppColors.money),
                 title: Text(c.label),
                 subtitle: Text(limit > 0
                     ? '₹${limit.toStringAsFixed(0)} / month'
@@ -55,7 +55,7 @@ class BudgetsScreen extends ConsumerWidget {
     return showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('${cat.emoji} ${cat.label} budget'),
+        title: Text('${cat.label} budget'),
         content: TextField(
           controller: ctrl,
           autofocus: true,

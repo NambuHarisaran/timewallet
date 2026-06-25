@@ -11,9 +11,12 @@ import '../../widgets/gradient_card.dart';
 import '../../widgets/responsive_body.dart';
 import '../../widgets/section_card.dart';
 import '../budgets/budgets_screen.dart';
+import '../expense/expenses_screen.dart';
 import '../history/history_screen.dart';
 import '../insights/insights_screen.dart';
+import '../recurring/recurring_screen.dart';
 import '../salary/salary_setup_screen.dart';
+import '../wrapped/wrapped_screen.dart';
 import 'edit_profile_screen.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -47,12 +50,13 @@ class ProfileScreen extends ConsumerWidget {
                 CircleAvatar(
                   radius: 28,
                   backgroundColor: AppColors.money,
-                  child: Text(
-                    profile.name.isNotEmpty
-                        ? profile.name.characters.first.toUpperCase()
-                        : '🙂',
-                    style: const TextStyle(fontSize: 22, color: Colors.white),
-                  ),
+                  child: profile.name.isNotEmpty
+                      ? Text(
+                          profile.name.characters.first.toUpperCase(),
+                          style: const TextStyle(
+                              fontSize: 22, color: Colors.white),
+                        )
+                      : const Icon(Icons.person, color: Colors.white),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -122,6 +126,16 @@ class ProfileScreen extends ConsumerWidget {
                 const Divider(),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.receipt_long_outlined),
+                  title: const Text('All expenses'),
+                  subtitle: const Text('Monitor & delete your spending'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => const ExpensesScreen())),
+                ),
+                const Divider(),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.insights_outlined),
                   title: const Text('Insights'),
                   subtitle: const Text('Spending trends & breakdowns'),
@@ -132,12 +146,32 @@ class ProfileScreen extends ConsumerWidget {
                 const Divider(),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.auto_awesome_outlined),
+                  title: const Text('Your Wrapped'),
+                  subtitle: const Text('Your money→time recap'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => const WrappedScreen())),
+                ),
+                const Divider(),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.pie_chart_outline),
                   title: const Text('Category budgets'),
                   subtitle: const Text('Set monthly limits per category'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.of(context).push(MaterialPageRoute(
                       builder: (_) => const BudgetsScreen())),
+                ),
+                const Divider(),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.subscriptions_outlined),
+                  title: const Text('Subscriptions'),
+                  subtitle: const Text('Track recurring costs as work-time'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => const RecurringScreen())),
                 ),
                 const Divider(),
                 ListTile(

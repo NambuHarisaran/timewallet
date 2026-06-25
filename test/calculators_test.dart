@@ -51,6 +51,28 @@ void main() {
     expect(v, closeTo(179084.77, 5));
   });
 
+  test('Months to freedom: already-there and never cases', () {
+    expect(
+        Calculators.monthsToFreedom(
+            savings: 1000000,
+            monthlyInvest: 0,
+            annualRatePct: 8,
+            targetCorpus: 1000000),
+        0);
+    // No savings, no investing, no growth → capped at 1200 ("never").
+    expect(
+        Calculators.monthsToFreedom(
+            savings: 0,
+            monthlyInvest: 0,
+            annualRatePct: 0,
+            targetCorpus: 100000),
+        1200);
+    final m = Calculators.monthsToFreedom(
+        savings: 0, monthlyInvest: 10000, annualRatePct: 12, targetCorpus: 1000000);
+    expect(m, greaterThan(0));
+    expect(m, lessThan(1200));
+  });
+
   test('Retirement corpus uses inflated expense and the 4% rule', () {
     final r = Calculators.retirementCorpus(
         monthlyExpense: 30000, yearsToRetire: 0, inflationPct: 6);

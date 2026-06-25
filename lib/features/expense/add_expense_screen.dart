@@ -100,7 +100,8 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             children: ExpenseCategory.all.map((c) {
               final active = c.id == _categoryId;
               return ChoiceChip(
-                label: Text('${c.emoji} ${c.label}'),
+                avatar: Icon(c.icon, size: 18),
+                label: Text(c.label),
                 selected: active,
                 onSelected: (_) => setState(() => _categoryId = c.id),
               );
@@ -112,9 +113,9 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _moodChip(Mood.good, '😀'),
-              _moodChip(Mood.neutral, '😐'),
-              _moodChip(Mood.bad, '😫'),
+              _moodChip(Mood.good, Icons.sentiment_satisfied_alt),
+              _moodChip(Mood.neutral, Icons.sentiment_neutral),
+              _moodChip(Mood.bad, Icons.sentiment_very_dissatisfied),
             ],
           ),
           const SizedBox(height: 20),
@@ -157,7 +158,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     );
   }
 
-  Widget _moodChip(Mood m, String emoji) {
+  Widget _moodChip(Mood m, IconData icon) {
     final active = m == _mood;
     return GestureDetector(
       onTap: () => setState(() => _mood = m),
@@ -174,7 +175,8 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             width: 2,
           ),
         ),
-        child: Text(emoji, style: const TextStyle(fontSize: 28)),
+        child: Icon(icon,
+            size: 28, color: active ? AppColors.money : AppColors.darkMuted),
       ),
     );
   }

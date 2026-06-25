@@ -353,6 +353,65 @@ class _RetireState extends State<RetirementCalculatorScreen> {
 }
 
 // ---------------------------------------------------------------------------
+// Financial freedom countdown
+// ---------------------------------------------------------------------------
+class FinancialFreedomScreen extends StatefulWidget {
+  const FinancialFreedomScreen({super.key});
+  @override
+  State<FinancialFreedomScreen> createState() => _FreedomState();
+}
+
+class _FreedomState extends State<FinancialFreedomScreen> {
+  double _expense = 30000, _savings = 200000, _invest = 20000, _rate = 12;
+
+  @override
+  Widget build(BuildContext context) {
+    final target = _expense * 12 * 25; // 4% rule
+    final months = Calculators.monthsToFreedom(
+      savings: _savings,
+      monthlyInvest: _invest,
+      annualRatePct: _rate,
+      targetCorpus: target,
+    );
+    final String value;
+    if (months == 0) {
+      value = "You're free";
+    } else if (months >= 1200) {
+      value = '100+ years';
+    } else {
+      final y = months ~/ 12;
+      final mo = months % 12;
+      value = mo > 0 ? '$y yr $mo mo' : '$y yr';
+    }
+
+    return _CalcScaffold(
+      title: 'Financial freedom',
+      sliders: [
+        _CalcSlider('Monthly expense', _expense, 5000, 500000, 99,
+            (v) => setState(() => _expense = v), _money.format(_expense),
+            accent: AppColors.positive),
+        _CalcSlider('Current savings', _savings, 0, 50000000, 999,
+            (v) => setState(() => _savings = v), _money.format(_savings),
+            accent: AppColors.positive),
+        _CalcSlider('Monthly investment', _invest, 0, 500000, 99,
+            (v) => setState(() => _invest = v), _money.format(_invest),
+            accent: AppColors.positive),
+        _CalcSlider('Expected return', _rate, 1, 20, 38,
+            (v) => setState(() => _rate = v), '${_rate.toStringAsFixed(1)}% p.a.',
+            accent: AppColors.positive),
+      ],
+      result: _SimpleResult(
+        accent: AppColors.positive,
+        headline: 'Freedom in',
+        value: value,
+        footnote:
+            'Target corpus ${_money.format(target)} (25× annual expense), investing ${_money.format(_invest)}/mo at ${_rate.toStringAsFixed(1)}%.',
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Shared UI
 // ---------------------------------------------------------------------------
 class _CalcScaffold extends StatelessWidget {

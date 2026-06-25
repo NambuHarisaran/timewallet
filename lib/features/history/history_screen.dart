@@ -174,7 +174,7 @@ class _ActivityRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
         children: [
-          Text(log.type.emoji, style: const TextStyle(fontSize: 22)),
+          Icon(log.type.icon, size: 22, color: AppColors.money),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
@@ -212,7 +212,8 @@ class _Empty extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('🧾', style: TextStyle(fontSize: 64)),
+            const Icon(Icons.receipt_long_outlined,
+                size: 64, color: AppColors.money),
             const SizedBox(height: 16),
             Text('No activity yet', style: t.titleLarge),
             const SizedBox(height: 8),

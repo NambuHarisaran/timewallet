@@ -3,6 +3,7 @@ import '../models/category_budget.dart';
 import '../models/expense.dart';
 import '../models/goal.dart';
 import '../models/holding.dart';
+import '../models/recurring_expense.dart';
 import '../models/user_profile.dart';
 
 /// Backend contract for all user data. FirestoreBackend is the real impl;
@@ -31,6 +32,10 @@ abstract class DataBackend {
   Stream<List<CategoryBudget>> watchBudgets();
   Future<void> upsertBudget(CategoryBudget b);
   Future<void> deleteBudget(String categoryId);
+
+  Stream<List<RecurringExpense>> watchRecurring();
+  Future<void> upsertRecurring(RecurringExpense r);
+  Future<void> deleteRecurring(String id);
 
   Stream<Map<String, double>> watchWorked();
   Future<void> addWorkedMinutes(String dayKey, double minutes);
@@ -89,6 +94,13 @@ class EmptyBackend implements DataBackend {
   Future<void> upsertBudget(CategoryBudget b) async {}
   @override
   Future<void> deleteBudget(String categoryId) async {}
+
+  @override
+  Stream<List<RecurringExpense>> watchRecurring() => Stream.value(const []);
+  @override
+  Future<void> upsertRecurring(RecurringExpense r) async {}
+  @override
+  Future<void> deleteRecurring(String id) async {}
 
   @override
   Stream<Map<String, double>> watchWorked() => Stream.value(const {});

@@ -12,8 +12,11 @@ import '../../widgets/progress_ring.dart';
 import '../../widgets/responsive_body.dart';
 import '../../widgets/section_card.dart';
 import '../expense/add_expense_screen.dart';
+import '../expense/expenses_screen.dart';
 import '../insights/insights_screen.dart';
+import '../recurring/recurring_screen.dart';
 import '../share/share_card_screen.dart';
+import '../tools/calculator_screens.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -41,7 +44,12 @@ class DashboardScreen extends ConsumerWidget {
     return Scaffold(
       body: SafeArea(
         child: RefreshIndicator(
-          onRefresh: () async {},
+          onRefresh: () async {
+            // Data is live via Firestore streams; refresh re-pulls live prices
+            // and gives tactile feedback.
+            ref.invalidate(livePricesProvider);
+            await Future<void>.delayed(const Duration(milliseconds: 400));
+          },
           child: ContentWidth(
             child: ListView(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
@@ -87,14 +95,29 @@ class DashboardScreen extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(height: 18),
-                      FilledButton(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: Colors.white.withValues(alpha: 0.2),
-                          foregroundColor: Colors.white,
+                      if (targetMin > 0 && workedMin >= targetMin)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.18),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: const Text('Shift complete — rest up',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700)),
+                        )
+                      else
+                        FilledButton(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: Colors.white.withValues(alpha: 0.2),
+                            foregroundColor: Colors.white,
+                          ),
+                          onPressed: () => _logWorkSheet(context, ref),
+                          child: const Text('Log work time'),
                         ),
-                        onPressed: () => _logWorkSheet(context, ref),
-                        child: const Text('Log work time'),
-                      ),
                     ],
                   ),
                 )
@@ -137,8 +160,13 @@ class DashboardScreen extends ConsumerWidget {
                 ),
               const SizedBox(height: 16),
 
-              // Spend today — as time or as budget %
-              SectionCard(
+              // Spend today — as time or as budget % (tap → full ledger)
+              InkWell(
+                borderRadius: BorderRadius.circular(24),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const ExpensesScreen()),
+                ),
+                child: SectionCard(
                 title: 'SPENT TODAY',
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -147,7 +175,7 @@ class DashboardScreen extends ConsumerWidget {
                     const SizedBox(height: 4),
                     Text(
                       todaySpend <= 0
-                          ? 'Nothing spent yet today 🎉'
+                          ? 'Nothing spent yet today'
                           : tracksTime
                               ? '= ${TimeFormat.longForm(spendMinutes, hoursPerDay: profile.hoursPerDay)} of your life'
                               : '= ${todayPct.toStringAsFixed(1)}% of your monthly budget',
@@ -155,7 +183,12 @@ class DashboardScreen extends ConsumerWidget {
                     ),
                   ],
                 ),
+                ),
               ),
+              const SizedBox(height: 16),
+
+              // Quick: check any price in work-time
+              const _QuickCheckCard(),
               const SizedBox(height: 16),
 
               // Held wants
@@ -164,6 +197,9 @@ class DashboardScreen extends ConsumerWidget {
               // Time reclaimed by skipping wants
               _ReclaimedCard(),
 
+              // Subscriptions burden
+              _SubscriptionsCard(),
+
               // Category budgets
               _BudgetsCard(),
 
@@ -171,7 +207,8 @@ class DashboardScreen extends ConsumerWidget {
               SectionCard(
                 child: Row(
                   children: [
-                    const Text('💡', style: TextStyle(fontSize: 24)),
+                    const Icon(Icons.lightbulb_outline,
+                        size: 24, color: AppColors.time),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
@@ -228,7 +265,7 @@ class DashboardScreen extends ConsumerWidget {
     return Row(
       children: [
         Expanded(
-          child: Text('$greet 👋',
+          child: Text(greet,
               style: Theme.of(context).textTheme.headlineMedium),
         ),
         if (streak > 0)
@@ -238,9 +275,17 @@ class DashboardScreen extends ConsumerWidget {
               color: AppColors.time.withValues(alpha: 0.18),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Text('🔥 $streak',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: AppColors.time, fontWeight: FontWeight.w700)),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.local_fire_department,
+                    size: 14, color: AppColors.time),
+                const SizedBox(width: 4),
+                Text('$streak',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: AppColors.time, fontWeight: FontWeight.w700)),
+              ],
+            ),
           ),
         const SizedBox(width: 10),
         InkWell(
@@ -388,6 +433,79 @@ class _Ticker extends StatelessWidget {
   }
 }
 
+/// Tap to check any price in work-time (promotes the Money→time tool).
+class _QuickCheckCard extends StatelessWidget {
+  const _QuickCheckCard();
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return InkWell(
+      borderRadius: BorderRadius.circular(24),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const TimeValueScreen()),
+      ),
+      child: SectionCard(
+        child: Row(
+          children: [
+            const Icon(Icons.search, size: 26, color: AppColors.money),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("What's it worth?", style: t.titleLarge),
+                  Text('Check any price in work-time', style: t.bodyMedium),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Subscriptions burden as work-time (only shows once some exist).
+class _SubscriptionsCard extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final items = ref.watch(recurringProvider).asData?.value ?? const [];
+    if (items.isEmpty) return const SizedBox.shrink();
+    final monthly = ref.watch(monthlyRecurringCostProvider);
+    final profile = ref.watch(profileOrDefaultProvider);
+    final t = Theme.of(context).textTheme;
+    final fmt = NumberFormat.currency(symbol: '₹', decimalDigits: 0);
+    final line = profile.tracksTime && monthly > 0
+        ? '= ${TimeFormat.longForm(profile.engine.minutesFor(monthly), hoursPerDay: profile.hoursPerDay)} of work / month'
+        : '${fmt.format(monthly * 12)} per year';
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(24),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const RecurringScreen()),
+        ),
+        child: SectionCard(
+          title: 'SUBSCRIPTIONS',
+          trailing: const Icon(Icons.chevron_right, size: 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('${fmt.format(monthly)} / month',
+                  style: t.headlineMedium),
+              const SizedBox(height: 2),
+              Text(line,
+                  style: t.bodyMedium?.copyWith(color: AppColors.time)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Lifetime work-time reclaimed by skipping held wants.
 class _ReclaimedCard extends ConsumerWidget {
   @override
@@ -401,7 +519,8 @@ class _ReclaimedCard extends ConsumerWidget {
       child: SectionCard(
         child: Row(
           children: [
-            const Text('🎉', style: TextStyle(fontSize: 24)),
+            const Icon(Icons.celebration_outlined,
+                size: 24, color: AppColors.positive),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
@@ -444,7 +563,9 @@ class _BudgetsCard extends ConsumerWidget {
                 children: [
                   Row(
                     children: [
-                      Text('${cat.emoji} ${cat.label}', style: t.bodyLarge),
+                      Icon(cat.icon, size: 18, color: AppColors.money),
+                      const SizedBox(width: 6),
+                      Text(cat.label, style: t.bodyLarge),
                       const Spacer(),
                       Text(
                         '₹${spent.toStringAsFixed(0)} / ₹${b.monthlyLimit.toStringAsFixed(0)}',
@@ -501,7 +622,7 @@ class _HeldList extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(vertical: 6),
               child: Row(
                 children: [
-                  Text(e.category.emoji, style: const TextStyle(fontSize: 22)),
+                  Icon(e.category.icon, size: 22, color: AppColors.money),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -528,7 +649,7 @@ class _HeldList extends ConsumerWidget {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
-                              'Bought back ${TimeFormat.hm(e.timeCostMinutes, hoursPerDay: profile.hoursPerDay)} 🎉'),
+                              'Bought back ${TimeFormat.hm(e.timeCostMinutes, hoursPerDay: profile.hoursPerDay)}'),
                         ),
                       );
                     },

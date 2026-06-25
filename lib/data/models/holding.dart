@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 import '../../core/util/json_safe.dart';
 
 /// An investment the user holds: a stock, gold, or a generic asset.
@@ -14,11 +16,11 @@ extension AssetTypeX on AssetType {
         AssetType.mutualFund => 'Mutual fund',
       };
 
-  String get emoji => switch (this) {
-        AssetType.stock => '📈',
-        AssetType.gold => '🪙',
-        AssetType.other => '💼',
-        AssetType.mutualFund => '📊',
+  IconData get icon => switch (this) {
+        AssetType.stock => Icons.show_chart,
+        AssetType.gold => Icons.diamond_outlined,
+        AssetType.other => Icons.account_balance_wallet_outlined,
+        AssetType.mutualFund => Icons.pie_chart_outline,
       };
 
   /// Unit the `units` field is measured in.
