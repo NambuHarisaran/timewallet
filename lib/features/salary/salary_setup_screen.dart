@@ -26,6 +26,7 @@ class _SalarySetupScreenState extends ConsumerState<SalarySetupScreen> {
   double _daysPerWeek = 5;
   double _hoursPerDay = 8;
   int _workDayStartHour = 0;
+  bool _overtimePaid = true;
 
   static const Map<Persona, (IconData, String)> _personaLabels = {
     Persona.student: (Icons.school_outlined, 'Student'),
@@ -75,6 +76,7 @@ class _SalarySetupScreenState extends ConsumerState<SalarySetupScreen> {
       workDaysPerWeek: _daysPerWeek,
       hoursPerDay: _hoursPerDay,
       workDayStartHour: _workDayStartHour,
+      overtimePaid: _overtimePaid,
       onboarded: true,
     );
     ref.read(appActionsProvider).saveProfile(profile);
@@ -180,6 +182,13 @@ class _SalarySetupScreenState extends ConsumerState<SalarySetupScreen> {
                   onSelected: (_) => setState(() => _workDayStartHour = 12),
                 ),
               ],
+            ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Overtime is paid'),
+              subtitle: const Text('Earn for hours beyond your daily target'),
+              value: _overtimePaid,
+              onChanged: (v) => setState(() => _overtimePaid = v),
             ),
           ],
           const SizedBox(height: 16),

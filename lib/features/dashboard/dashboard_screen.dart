@@ -29,9 +29,12 @@ class DashboardScreen extends ConsumerWidget {
     final todaySpend = ref.watch(todaySpendProvider);
     final fmt = NumberFormat.currency(symbol: '₹', decimalDigits: 0);
 
-    final earnedToday = profile.engine.moneyForMinutes(workedMin);
+    final work = ref.watch(workTodayProvider);
+    final earnedToday = work.earned;
     final targetMin = profile.hoursPerDay * 60;
-    final ringProgress = targetMin <= 0 ? 0.0 : workedMin / targetMin;
+    final ringProgress =
+        targetMin <= 0 ? 0.0 : (workedMin / targetMin).clamp(0.0, 1.0);
+    final atDailyCap = workedMin >= kDailyCapMinutes;
     final spendMinutes = profile.engine.minutesFor(todaySpend);
 
     final tracksTime = profile.tracksTime;
@@ -75,6 +78,24 @@ class DashboardScreen extends ConsumerWidget {
                         '${TimeFormat.hm(workedMin, hoursPerDay: profile.hoursPerDay)} worked',
                         style: t.bodyMedium?.copyWith(color: Colors.white70),
                       ),
+                      if (work.overtime > 0) ...[
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.18),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            work.overtimePaid
+                                ? 'OT ${TimeFormat.hm(work.overtime, hoursPerDay: profile.hoursPerDay)} · +${fmt.format(profile.engine.moneyForMinutes(work.overtime))}'
+                                : 'OT ${TimeFormat.hm(work.overtime, hoursPerDay: profile.hoursPerDay)} · unpaid',
+                            style: t.labelSmall?.copyWith(
+                                color: Colors.white, fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 22),
                       ProgressRing(
                         progress: ringProgress.toDouble(),
@@ -95,7 +116,7 @@ class DashboardScreen extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(height: 18),
-                      if (targetMin > 0 && workedMin >= targetMin)
+                      if (atDailyCap)
                         Container(
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(vertical: 14),
@@ -104,7 +125,7 @@ class DashboardScreen extends ConsumerWidget {
                             color: Colors.white.withValues(alpha: 0.18),
                             borderRadius: BorderRadius.circular(16),
                           ),
-                          child: const Text('Shift complete — rest up',
+                          child: const Text('Daily limit reached (24h)',
                               style: TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.w700)),
@@ -116,7 +137,9 @@ class DashboardScreen extends ConsumerWidget {
                             foregroundColor: Colors.white,
                           ),
                           onPressed: () => _logWorkSheet(context, ref),
-                          child: const Text('Log work time'),
+                          child: Text(workedMin >= targetMin
+                              ? 'Log overtime'
+                              : 'Log work time'),
                         ),
                     ],
                   ),

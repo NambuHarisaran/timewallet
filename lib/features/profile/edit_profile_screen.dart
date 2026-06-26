@@ -25,6 +25,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   late double _daysPerWeek;
   late double _hoursPerDay;
   late int _workDayStartHour;
+  late bool _overtimePaid;
 
   static const Map<Persona, (IconData, String)> _personaLabels = {
     Persona.student: (Icons.school_outlined, 'Student'),
@@ -54,6 +55,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     _daysPerWeek = p.workDaysPerWeek;
     _hoursPerDay = p.hoursPerDay;
     _workDayStartHour = p.workDayStartHour;
+    _overtimePaid = p.overtimePaid;
   }
 
   @override
@@ -89,6 +91,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       workDaysPerWeek: _daysPerWeek,
       hoursPerDay: _hoursPerDay,
       workDayStartHour: _workDayStartHour,
+      overtimePaid: _overtimePaid,
       onboarded: true,
     );
     ref.read(appActionsProvider).saveProfile(next);
@@ -190,6 +193,13 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   onSelected: (_) => setState(() => _workDayStartHour = 12),
                 ),
               ],
+            ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Overtime is paid'),
+              subtitle: const Text('Earn for hours beyond your daily target'),
+              value: _overtimePaid,
+              onChanged: (v) => setState(() => _overtimePaid = v),
             ),
           ],
           const SizedBox(height: 16),

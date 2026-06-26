@@ -1,20 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../state/app_providers.dart';
 import 'dashboard/dashboard_screen.dart';
 import 'goals/goals_screen.dart';
 import 'invest/portfolio_screen.dart';
 import 'profile/profile_screen.dart';
 import 'tools/tools_screen.dart';
+import 'walkthrough/walkthrough_screen.dart';
 
-class HomeShell extends StatefulWidget {
+class HomeShell extends ConsumerStatefulWidget {
   const HomeShell({super.key});
 
   @override
-  State<HomeShell> createState() => _HomeShellState();
+  ConsumerState<HomeShell> createState() => _HomeShellState();
 }
 
-class _HomeShellState extends State<HomeShell> {
+class _HomeShellState extends ConsumerState<HomeShell> {
   int _index = 0;
+  static const _seenKey = 'seenWalkthrough';
 
   static const _tabs = [
     DashboardScreen(),
@@ -23,6 +27,20 @@ class _HomeShellState extends State<HomeShell> {
     ToolsScreen(),
     ProfileScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    // First entry after onboarding: show the feature walkthrough once.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final prefs = ref.read(sharedPrefsProvider);
+      if (prefs.getBool(_seenKey) == true) return;
+      await prefs.setBool(_seenKey, true);
+      if (!mounted) return;
+      await Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => const WalkthroughScreen(), fullscreenDialog: true));
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

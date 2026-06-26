@@ -37,6 +37,32 @@ class _WorthItState extends ConsumerState<WorthItScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Worth it?')),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          child: Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(54)),
+                  onPressed: _value > 0 ? _buy : null,
+                  child: const Text('Buy it'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: FilledButton(
+                  style:
+                      FilledButton.styleFrom(backgroundColor: AppColors.positive),
+                  onPressed: _value > 0 ? _skip : null,
+                  child: const Text('Skip it'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
       body: ResponsiveBody(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -93,28 +119,6 @@ class _WorthItState extends ConsumerState<WorthItScreen> {
                   onSelected: (_) => setState(() => _categoryId = c.id),
                 );
               }).toList(),
-            ),
-            const Spacer(),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(54)),
-                    onPressed: _value > 0 ? _buy : null,
-                    child: const Text('Buy it'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton(
-                    style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.positive),
-                    onPressed: _value > 0 ? _skip : null,
-                    child: const Text('Skip it'),
-                  ),
-                ),
-              ],
             ),
             const SizedBox(height: 8),
           ],

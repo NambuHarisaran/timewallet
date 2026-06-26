@@ -15,6 +15,7 @@ import '../data/models/holding.dart';
 import '../data/models/recurring_expense.dart';
 import '../data/models/user_profile.dart';
 import '../services/auth_service.dart';
+import '../services/notification_service.dart';
 import '../services/price_provider.dart';
 import '../services/price_resolver.dart';
 import '../services/providers/finnhub_provider.dart';
@@ -169,12 +170,43 @@ final workedTodayProvider = Provider<double>((ref) {
   return map[workDayKey(startHour)] ?? 0;
 });
 
-/// Minutes still loggable in the current shift (0 once the daily target hit).
+/// Hard daily ceiling on logged work (24h). Hours beyond the user's
+/// `hoursPerDay` are overtime, not blocked — only the 24h cap blocks logging.
+const double kDailyCapMinutes = 24 * 60;
+
+/// Minutes still loggable today before the 24h cap.
 final workRemainingProvider = Provider<double>((ref) {
-  final profile = ref.watch(profileOrDefaultProvider);
-  final target = profile.hoursPerDay * 60;
   final done = ref.watch(workedTodayProvider);
-  return (target - done).clamp(0, target).toDouble();
+  return (kDailyCapMinutes - done).clamp(0, kDailyCapMinutes).toDouble();
+});
+
+/// Today's work split into regular vs overtime, with OT-aware earnings.
+class WorkToday {
+  final double worked; // total logged minutes
+  final double regular; // up to hoursPerDay
+  final double overtime; // beyond hoursPerDay
+  final double earned; // ₹ (overtime counts only if paid)
+  final bool overtimePaid;
+  const WorkToday({
+    required this.worked,
+    required this.regular,
+    required this.overtime,
+    required this.earned,
+    required this.overtimePaid,
+  });
+}
+
+final workTodayProvider = Provider<WorkToday>((ref) {
+  final p = ref.watch(profileOrDefaultProvider);
+  final worked = ref.watch(workedTodayProvider);
+  final s = p.workSplit(worked);
+  return WorkToday(
+    worked: worked,
+    regular: s.regular,
+    overtime: s.overtime,
+    earned: s.earned,
+    overtimePaid: p.overtimePaid,
+  );
 });
 
 /// Rolled-up portfolio totals across every holding.
@@ -578,3 +610,36 @@ class ThemeModeNotifier extends Notifier<ThemeMode> {
 
 final themeModeProvider =
     NotifierProvider<ThemeModeNotifier, ThemeMode>(ThemeModeNotifier.new);
+
+// ---------------------------------------------------------------------------
+// Notifications (daily reminder), persisted
+// ---------------------------------------------------------------------------
+final notificationServiceProvider =
+    Provider<NotificationService>((ref) => NotificationService());
+
+class DailyReminderNotifier extends Notifier<bool> {
+  static const _key = 'dailyReminder';
+
+  @override
+  bool build() => ref.read(sharedPrefsProvider).getBool(_key) ?? false;
+
+  Future<void> set(bool on) async {
+    state = on;
+    await ref.read(sharedPrefsProvider).setBool(_key, on);
+    final svc = ref.read(notificationServiceProvider);
+    if (on) {
+      final granted = await svc.requestPermission();
+      if (granted) {
+        await svc.enableDailyReminder();
+      } else {
+        state = false;
+        await ref.read(sharedPrefsProvider).setBool(_key, false);
+      }
+    } else {
+      await svc.disableDailyReminder();
+    }
+  }
+}
+
+final dailyReminderProvider =
+    NotifierProvider<DailyReminderNotifier, bool>(DailyReminderNotifier.new);

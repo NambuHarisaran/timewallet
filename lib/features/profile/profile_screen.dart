@@ -16,6 +16,7 @@ import '../history/history_screen.dart';
 import '../insights/insights_screen.dart';
 import '../recurring/recurring_screen.dart';
 import '../salary/salary_setup_screen.dart';
+import '../walkthrough/walkthrough_screen.dart';
 import '../wrapped/wrapped_screen.dart';
 import 'edit_profile_screen.dart';
 
@@ -122,6 +123,25 @@ class ProfileScreen extends ConsumerWidget {
                   value: mode == ThemeMode.dark,
                   onChanged: (v) =>
                       ref.read(themeModeProvider.notifier).setDark(v),
+                ),
+                const Divider(),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Daily reminder'),
+                  subtitle: const Text('A nudge to log work & spending'),
+                  value: ref.watch(dailyReminderProvider),
+                  onChanged: (v) =>
+                      ref.read(dailyReminderProvider.notifier).set(v),
+                ),
+                const Divider(),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.help_outline),
+                  title: const Text('How it works'),
+                  subtitle: const Text('Replay the feature walkthrough'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => const WalkthroughScreen())),
                 ),
                 const Divider(),
                 ListTile(

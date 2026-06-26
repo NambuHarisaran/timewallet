@@ -22,6 +22,9 @@ class UserProfile {
   /// night shift = 12 (noon) so a shift crossing midnight stays one day.
   final int workDayStartHour;
 
+  /// Whether hours worked beyond [hoursPerDay] are paid (overtime).
+  final bool overtimePaid;
+
   const UserProfile({
     this.name = '',
     this.age = 0,
@@ -34,6 +37,7 @@ class UserProfile {
     this.onboarded = false,
     this.currencySymbol = '₹',
     this.workDayStartHour = 0,
+    this.overtimePaid = true,
   });
 
   bool get isNightShift => workDayStartHour != 0;
@@ -65,6 +69,18 @@ class UserProfile {
         hoursPerDay: hoursPerDay,
       );
 
+  /// Splits worked minutes into regular vs overtime and computes earnings.
+  /// Overtime (beyond [hoursPerDay]) earns only when [overtimePaid].
+  ({double regular, double overtime, double earned}) workSplit(
+      double workedMinutes) {
+    final target = hoursPerDay * 60;
+    final regular = workedMinutes.clamp(0, target).toDouble();
+    final overtime = (workedMinutes - target).clamp(0, double.infinity).toDouble();
+    final earned = engine.moneyForMinutes(regular) +
+        (overtimePaid ? engine.moneyForMinutes(overtime) : 0);
+    return (regular: regular, overtime: overtime, earned: earned);
+  }
+
   UserProfile copyWith({
     String? name,
     int? age,
@@ -77,6 +93,7 @@ class UserProfile {
     bool? onboarded,
     String? currencySymbol,
     int? workDayStartHour,
+    bool? overtimePaid,
   }) {
     return UserProfile(
       name: name ?? this.name,
@@ -90,6 +107,7 @@ class UserProfile {
       onboarded: onboarded ?? this.onboarded,
       currencySymbol: currencySymbol ?? this.currencySymbol,
       workDayStartHour: workDayStartHour ?? this.workDayStartHour,
+      overtimePaid: overtimePaid ?? this.overtimePaid,
     );
   }
 
@@ -105,6 +123,7 @@ class UserProfile {
         'onboarded': onboarded,
         'currencySymbol': currencySymbol,
         'workDayStartHour': workDayStartHour,
+        'overtimePaid': overtimePaid,
       };
 
   factory UserProfile.fromJson(Map<String, dynamic> j) => UserProfile(
@@ -120,5 +139,6 @@ class UserProfile {
         onboarded: j['onboarded'] == true,
         currencySymbol: safeString(j['currencySymbol'], '₹'),
         workDayStartHour: safeInt(j['workDayStartHour']),
+        overtimePaid: j['overtimePaid'] != false,
       );
 }

@@ -163,6 +163,11 @@ class _GoalTile extends ConsumerWidget {
     final profile = ref.watch(profileOrDefaultProvider);
     final remainingDays = profile.engine.daysFor(goal.remaining);
     final fmt = NumberFormat.currency(symbol: '₹', decimalDigits: 0);
+    // Overtime/day to fund the remainder within a month (30 days).
+    final rate = profile.effectiveHourlyRate;
+    final otPerDay = (profile.tracksTime && profile.overtimePaid && rate > 0)
+        ? (goal.remaining / rate) / 30
+        : null;
 
     return SectionCard(
       child: Row(
@@ -186,6 +191,11 @@ class _GoalTile extends ConsumerWidget {
                   '${remainingDays.toStringAsFixed(remainingDays >= 10 ? 0 : 1)} work-days away',
                   style: t.bodyMedium?.copyWith(color: AppColors.time),
                 ),
+                if (otPerDay != null && otPerDay > 0) ...[
+                  const SizedBox(height: 2),
+                  Text('≈ ${otPerDay.toStringAsFixed(1)}h overtime/day for a month',
+                      style: t.labelSmall?.copyWith(color: AppColors.positive)),
+                ],
                 const SizedBox(height: 2),
                 Text('${fmt.format(goal.savedAmount)} / ${fmt.format(goal.amount)}',
                     style: t.labelSmall),
