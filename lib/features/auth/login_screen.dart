@@ -5,6 +5,7 @@ import '../../core/theme/app_colors.dart';
 import '../../services/auth_service.dart';
 import '../../state/app_providers.dart';
 import '../../widgets/responsive_body.dart';
+import '../../utils/browser_detector.dart' as detector;
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -95,6 +96,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
+    final isSessionStorageUnsupported = !detector.isSessionStorageSupported();
+    final isInAppWebView = detector.isInAppWebView();
     return Scaffold(
       body: ResponsiveBody(
         padding: const EdgeInsets.all(24),
@@ -200,6 +203,32 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
+                  if (isSessionStorageUnsupported || isInAppWebView) ...[
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.warn.withValues(alpha: 0.1),
+                        border: Border.all(color: AppColors.warn.withValues(alpha: 0.4)),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.warning_amber_rounded, color: AppColors.warn, size: 20),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              isSessionStorageUnsupported
+                                  ? 'Browser storage is disabled or inaccessible (e.g., Incognito mode). Google Sign-In will fail. Please use Email/Password login or enable cookies/storage.'
+                                  : 'Google Sign-In might not work inside this app\'s browser. If login fails, please tap the menu (three dots) and select "Open in Browser" (e.g. Chrome/Safari) to sign in.',
+                              style: t.bodySmall?.copyWith(height: 1.4),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   OutlinedButton.icon(
                     onPressed: _busy ? null : _google,
                     style: OutlinedButton.styleFrom(
