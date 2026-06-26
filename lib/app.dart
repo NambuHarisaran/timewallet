@@ -91,11 +91,11 @@ class _Splash extends StatelessWidget {
   }
 }
 
-class _ErrorView extends StatelessWidget {
+class _ErrorView extends ConsumerWidget {
   final String message;
   const _ErrorView({required this.message});
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       body: Center(
         child: Padding(
@@ -115,6 +115,12 @@ class _ErrorView extends StatelessWidget {
                     textAlign: TextAlign.center,
                     style: const TextStyle(fontSize: 11, color: Colors.grey)),
               ],
+              const SizedBox(height: 20),
+              FilledButton.icon(
+                onPressed: () => ref.invalidate(authStateProvider),
+                icon: const Icon(Icons.refresh),
+                label: const Text('Try again'),
+              ),
             ],
           ),
         ),

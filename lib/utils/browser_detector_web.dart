@@ -1,3 +1,4 @@
+// ignore_for_file: avoid_web_libraries_in_flutter, deprecated_member_use
 import 'dart:js' as js;
 
 bool isSessionStorageSupported() {
@@ -29,6 +30,19 @@ bool isInAppWebView() {
       'wv',
     ];
     return rules.any((rule) => userAgent.toLowerCase().contains(rule.toLowerCase()));
+  } catch (_) {
+    return false;
+  }
+}
+
+/// Detects mobile browsers (Android, iPhone, iPad, iPod) where signInWithPopup
+/// often fails because mobile Chrome converts popups into redirects, breaking
+/// the sessionStorage-based state handshake.
+bool isMobileWeb() {
+  try {
+    final userAgent = js.context['navigator']['userAgent'] as String? ?? '';
+    return RegExp(r'Android|iPhone|iPad|iPod|Mobile', caseSensitive: false)
+        .hasMatch(userAgent);
   } catch (_) {
     return false;
   }

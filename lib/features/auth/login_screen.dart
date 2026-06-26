@@ -72,7 +72,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _google() async {
     setState(() => _busy = true);
     try {
-      await ref.read(authServiceProvider).signInGoogle();
+      final cred = await ref.read(authServiceProvider).signInGoogle();
+      if (cred == null) {
+        // Redirect flow (mobile web) — the page will reload after Google
+        // authenticates. Keep the spinner; no further action needed here.
+        return;
+      }
+      // Popup flow succeeded — authStateProvider stream flips → AuthGate
+      // routes away automatically.
     } catch (e) {
       _toast(AuthService.describeError(e));
     } finally {
