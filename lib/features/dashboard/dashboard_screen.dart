@@ -22,6 +22,7 @@ import '../insights/insights_screen.dart';
 import '../recurring/recurring_screen.dart';
 import '../share/share_card_screen.dart';
 import '../tools/calculator_screens.dart';
+import '../walkthrough/walkthrough_screen.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -60,7 +61,7 @@ class DashboardScreen extends ConsumerWidget {
           },
           child: ContentWidth(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+              padding: EdgeInsets.fromLTRB(16, 8, 16, MediaQuery.of(context).viewPadding.bottom + 92),
               children: [
               _header(context, profile.name, ref.watch(streakProvider)),
               const SizedBox(height: 20),
@@ -306,13 +307,6 @@ class DashboardScreen extends ConsumerWidget {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const AddExpenseScreen()),
-        ),
-        icon: const Icon(Icons.add),
-        label: const Text('Add expense'),
-      ),
     );
   }
 
@@ -544,51 +538,142 @@ class _StartHereCard extends ConsumerWidget {
     final hasExpense =
         (ref.watch(expensesProvider).asData?.value ?? const []).isNotEmpty;
 
-    // Required steps: log work (time-mode only) + add an expense.
-    final workDone = !tracksTime || hasWorked;
-    if (workDone && hasExpense) return const SizedBox.shrink();
+    final prefs = ref.watch(sharedPrefsProvider);
+    final isCompletedBefore = prefs.getBool('start_here_completed') ?? false;
+    if (isCompletedBefore) return const SizedBox.shrink();
+
+    final hasTriedWorthIt = ref.watch(triedWorthItProvider);
+    final hasViewedTour = ref.watch(viewedTourProvider);
+
+    // Determine steps and progress
+    final totalSteps = tracksTime ? 4 : 3;
+    var completedSteps = 0;
+    if (tracksTime && hasWorked) completedSteps++;
+    if (hasExpense) completedSteps++;
+    if (hasTriedWorthIt) completedSteps++;
+    if (hasViewedTour) completedSteps++;
+
+    final progress = completedSteps / totalSteps;
+
+    // Check if everything is done to persist the completion flag
+    if (completedSteps == totalSteps) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        prefs.setBool('start_here_completed', true);
+      });
+      return const SizedBox.shrink();
+    }
 
     final t = Theme.of(context).textTheme;
-    final steps = <Widget>[
-      if (tracksTime)
-        _StepTile(
-          done: hasWorked,
-          icon: Icons.timer_outlined,
-          title: 'Log your first work time',
-          subtitle: 'Watch your earnings start to grow',
-          onTap: hasWorked ? null : onLogWork,
-        ),
-      _StepTile(
-        done: hasExpense,
-        icon: Icons.payments_outlined,
-        title: 'Add your first expense',
-        subtitle: 'See its real cost in hours, not just rupees',
-        onTap: hasExpense
-            ? null
-            : () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => const AddExpenseScreen())),
-      ),
-      _StepTile(
-        done: false,
-        icon: Icons.search,
-        title: 'Try "Worth it?"',
-        subtitle: 'Check any price in work-time before you buy',
-        onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const TimeValueScreen())),
-      ),
-    ];
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: SectionCard(
-        title: 'START HERE',
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('A few taps to see your money as time.',
-                style: t.bodyMedium?.copyWith(color: AppColors.darkMuted)),
-            const SizedBox(height: 8),
-            ...steps,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'GETTING STARTED',
+                        style: t.labelSmall?.copyWith(
+                          color: AppColors.accent,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Complete onboarding tasks',
+                        style: t.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.accent.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '$completedSteps of $totalSteps completed',
+                    style: t.labelSmall?.copyWith(
+                      color: AppColors.accent,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: progress,
+                backgroundColor: isDark
+                    ? AppColors.darkBorder
+                    : Colors.grey.shade300,
+                color: AppColors.accent,
+                minHeight: 6,
+              ),
+            ),
+            const SizedBox(height: 16),
+            if (tracksTime)
+              _StepTile(
+                done: hasWorked,
+                icon: Icons.timer_outlined,
+                title: 'Log your first work time',
+                subtitle: 'Track your work session directly on Home',
+                onTap: hasWorked ? null : onLogWork,
+              ),
+            _StepTile(
+              done: hasExpense,
+              icon: Icons.payments_outlined,
+              title: 'Add your first expense',
+              subtitle: 'Check its cost in hours, not just money',
+              onTap: hasExpense
+                  ? null
+                  : () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => const AddExpenseScreen())),
+            ),
+            _StepTile(
+              done: hasTriedWorthIt,
+              icon: Icons.calculate_outlined,
+              title: 'Try "Worth it?" calculator',
+              subtitle: 'Convert any price to hours of life',
+              onTap: hasTriedWorthIt
+                  ? null
+                  : () async {
+                      await Navigator.of(context).push(MaterialPageRoute(
+                          builder: (_) => const TimeValueScreen()));
+                      ref.read(triedWorthItProvider.notifier).setCompleted();
+                    },
+            ),
+            _StepTile(
+              done: hasViewedTour,
+              icon: Icons.map_outlined,
+              title: 'Take the app walkthrough tour',
+              subtitle: 'Quickly learn the key concepts',
+              onTap: hasViewedTour
+                  ? null
+                  : () async {
+                      await Navigator.of(context).push(MaterialPageRoute(
+                          builder: (_) => const WalkthroughScreen()));
+                      ref.read(viewedTourProvider.notifier).setCompleted();
+                    },
+            ),
           ],
         ),
       ),
@@ -616,34 +701,60 @@ class _StepTile extends StatelessWidget {
     return Pressable(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: 10),
         child: Row(
           children: [
-            Icon(
-              done ? Icons.check_circle : icon,
-              size: 26,
-              color: done ? AppColors.positive : AppColors.money,
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: done
+                    ? AppColors.positive.withValues(alpha: 0.15)
+                    : (onTap != null
+                        ? AppColors.accent.withValues(alpha: 0.08)
+                        : AppColors.darkBorder),
+                border: Border.all(
+                  color: done
+                      ? AppColors.positive
+                      : (onTap != null ? AppColors.accent : AppColors.darkBorder),
+                  width: 2,
+                ),
+              ),
+              child: done
+                  ? const Icon(Icons.check, size: 14, color: AppColors.positive)
+                  : Icon(icon, size: 12, color: onTap != null ? AppColors.accent : AppColors.darkMuted),
             ),
-            Gap.w12,
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     title,
-                    style: t.titleMedium?.copyWith(
+                    style: t.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
                       decoration: done ? TextDecoration.lineThrough : null,
                       color: done ? AppColors.darkMuted : null,
                     ),
                   ),
-                  if (!done)
-                    Text(subtitle,
-                        style: t.bodySmall
-                            ?.copyWith(color: AppColors.darkMuted)),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: t.bodySmall?.copyWith(
+                      color: AppColors.darkMuted,
+                    ),
+                  ),
                 ],
               ),
             ),
-            if (!done && onTap != null) const Icon(Icons.chevron_right),
+            if (!done && onTap != null)
+              Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 14,
+                color: AppColors.darkMuted.withValues(alpha: 0.5),
+              ),
           ],
         ),
       ),

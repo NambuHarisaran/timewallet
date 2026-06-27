@@ -643,3 +643,37 @@ class DailyReminderNotifier extends Notifier<bool> {
 
 final dailyReminderProvider =
     NotifierProvider<DailyReminderNotifier, bool>(DailyReminderNotifier.new);
+
+// ---------------------------------------------------------------------------
+// Onboarding progress states, persisted
+// ---------------------------------------------------------------------------
+
+class TriedWorthItNotifier extends Notifier<bool> {
+  static const _key = 'has_tried_worth_it';
+
+  @override
+  bool build() => ref.read(sharedPrefsProvider).getBool(_key) ?? false;
+
+  Future<void> setCompleted() async {
+    state = true;
+    await ref.read(sharedPrefsProvider).setBool(_key, true);
+  }
+}
+
+final triedWorthItProvider =
+    NotifierProvider<TriedWorthItNotifier, bool>(TriedWorthItNotifier.new);
+
+class ViewedTourNotifier extends Notifier<bool> {
+  static const _key = 'has_viewed_tour';
+
+  @override
+  bool build() => ref.read(sharedPrefsProvider).getBool(_key) ?? false;
+
+  Future<void> setCompleted() async {
+    state = true;
+    await ref.read(sharedPrefsProvider).setBool(_key, true);
+  }
+}
+
+final viewedTourProvider =
+    NotifierProvider<ViewedTourNotifier, bool>(ViewedTourNotifier.new);

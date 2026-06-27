@@ -34,16 +34,11 @@ class GoalsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Goals')),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _addGoalSheet(context, ref),
-        icon: const Icon(Icons.add),
-        label: const Text('New goal'),
-      ),
       body: goals.isEmpty
           ? _empty(context, ref)
           : ContentWidth(
               child: ListView.separated(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).viewPadding.bottom + 92),
                 itemCount: goals.length,
                 separatorBuilder: (_, _) => const SizedBox(height: 12),
                 itemBuilder: (_, i) => _GoalTile(goal: goals[i]),

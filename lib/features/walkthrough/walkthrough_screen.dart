@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../widgets/gradient_card.dart';
@@ -43,6 +44,14 @@ class WalkthroughScreen extends StatefulWidget {
 class _WalkthroughScreenState extends State<WalkthroughScreen> {
   final _controller = PageController();
   int _page = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    SharedPreferences.getInstance().then((prefs) {
+      prefs.setBool('has_viewed_tour', true);
+    });
+  }
 
   @override
   void dispose() {

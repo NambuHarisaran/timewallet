@@ -34,7 +34,7 @@ class RecurringScreen extends ConsumerWidget {
       ),
       body: ContentWidth(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+          padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).viewPadding.bottom + 92),
           children: [
             GradientCard(
               colors: AppColors.auroraWarn,

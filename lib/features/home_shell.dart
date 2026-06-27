@@ -6,7 +6,9 @@ import '../core/theme/app_colors.dart';
 import '../core/theme/app_spacing.dart';
 import '../state/app_providers.dart';
 import 'dashboard/dashboard_screen.dart';
+import 'expense/add_expense_screen.dart';
 import 'goals/goals_screen.dart';
+import 'invest/holding_form_screen.dart';
 import 'invest/portfolio_screen.dart';
 import 'profile/profile_screen.dart';
 import 'tools/tools_screen.dart';
@@ -58,10 +60,115 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     setState(() => _index = i);
   }
 
+  Widget? _fab() {
+    switch (_index) {
+      case 0:
+        return FloatingActionButton.extended(
+          heroTag: 'fab_expense',
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const AddExpenseScreen()),
+          ),
+          icon: const Icon(Icons.add),
+          label: const Text('Add expense'),
+        );
+      case 1:
+        return FloatingActionButton.extended(
+          heroTag: 'fab_goal',
+          onPressed: () => _addGoalSheet(),
+          icon: const Icon(Icons.add),
+          label: const Text('New goal'),
+        );
+      case 2:
+        return FloatingActionButton.extended(
+          heroTag: 'fab_holding',
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const HoldingFormScreen()),
+          ),
+          icon: const Icon(Icons.add),
+          label: const Text('Add holding'),
+        );
+      default:
+        return null;
+    }
+  }
+
+  void _addGoalSheet() {
+    final title = TextEditingController();
+    final amount = TextEditingController();
+    String emoji = 'target';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setSheet) => Padding(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 8,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('New goal', style: Theme.of(ctx).textTheme.titleLarge),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 8,
+                children: goalIcons.keys.map((k) {
+                  final selected = emoji == k;
+                  return ChoiceChip(
+                    showCheckmark: false,
+                    label: Icon(goalIcons[k],
+                        size: 20,
+                        color: selected ? AppColors.accent : null),
+                    selected: selected,
+                    onSelected: (_) => setSheet(() => emoji = k),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: title,
+                decoration: const InputDecoration(labelText: 'What for?'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: amount,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: const InputDecoration(
+                    labelText: 'Target amount', prefixText: '₹ '),
+              ),
+              const SizedBox(height: 20),
+              FilledButton(
+                onPressed: () {
+                  final amt = double.tryParse(amount.text) ?? 0;
+                  if (title.text.trim().isEmpty || amt <= 0) return;
+                  ref.read(appActionsProvider).addGoal(
+                        title: title.text.trim(),
+                        emoji: emoji,
+                        amount: amt,
+                      );
+                  Navigator.pop(context);
+                },
+                child: const Text('Create goal'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: IndexedStack(index: _index, children: _tabs),
+      floatingActionButton: _fab(),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       bottomNavigationBar: _FloatingNav(
         index: _index,
         items: _items,
@@ -71,8 +178,9 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   }
 }
 
-/// Floating glassy pill navigation — the selected tab expands into a gradient
-/// pill with its label; others are icon-only. Hovers above the bottom edge.
+/// Full-width bottom navigation with a rounded top edge. Solid (opaque) so
+/// scrolling content disappears cleanly beneath it — no content bleeding around
+/// a floating island. The selected tab expands into a gradient pill.
 class _FloatingNav extends StatelessWidget {
   final int index;
   final List<(IconData, String)> items;
@@ -87,30 +195,29 @@ class _FloatingNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-          decoration: BoxDecoration(
-            // Solid translucent fill (no BackdropFilter): avoids the raster
-            // error flash during Zoom page transitions, and is far cheaper.
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurface : Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
+        border: Border(
+          top: BorderSide(
             color: isDark
-                ? AppColors.darkSurfaceAlt.withValues(alpha: 0.96)
-                : Colors.white.withValues(alpha: 0.96),
-            borderRadius: BorderRadius.circular(30),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: isDark ? 0.10 : 0.6),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.30),
-                blurRadius: 24,
-                offset: const Offset(0, 10),
-              ),
-            ],
+                ? Colors.white.withValues(alpha: 0.06)
+                : AppColors.lightBorder,
           ),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.34 : 0.10),
+            blurRadius: 22,
+            offset: const Offset(0, -6),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [

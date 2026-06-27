@@ -49,13 +49,6 @@ class PortfolioScreen extends ConsumerWidget {
             ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const HoldingFormScreen()),
-        ),
-        icon: const Icon(Icons.add),
-        label: const Text('Add holding'),
-      ),
       body: holdingsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(
@@ -76,7 +69,7 @@ class PortfolioScreen extends ConsumerWidget {
             },
             child: ContentWidth(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).viewPadding.bottom + 92),
                 children: [
                   _SummaryCard(summary: summary),
                   const SizedBox(height: 8),

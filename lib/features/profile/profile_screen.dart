@@ -39,12 +39,21 @@ class ProfileScreen extends ConsumerWidget {
     final fmt = NumberFormat.currency(symbol: '₹', decimalDigits: 0);
     final email = ref.watch(firebaseAuthProvider).currentUser?.email ?? '';
 
+    // Read BEFORE any inner Scaffold resets MediaQuery (same pattern as dashboard).
+    final safeBottom = MediaQuery.of(context).viewPadding.bottom;
+    const double navPill = 92;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Profile')),
-      body: ContentWidth(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-          children: [
+      body: SafeArea(
+        bottom: false,
+        child: ContentWidth(
+          child: ListView(
+            padding: EdgeInsets.fromLTRB(16, 16, 16, safeBottom + navPill),
+            children: [
+          // Inline title — mirrors dashboard "Good morning" header
+          Text('Profile',
+              style: t.headlineLarge?.copyWith(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 20),
           // Identity header
           SectionCard(
             child: Row(
@@ -267,9 +276,10 @@ class ProfileScreen extends ConsumerWidget {
           const SizedBox(height: 8),
           Center(child: Text('TimeWallet · v0.1 MVP', style: t.labelSmall)),
           ],
-        ),
-      ),
-    );
+        ),      // ListView
+      ),        // ContentWidth
+    ),          // SafeArea
+  );            // Scaffold
   }
 
   Future<void> _resetSalary(BuildContext context, WidgetRef ref) async {

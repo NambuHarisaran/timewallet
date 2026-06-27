@@ -19,6 +19,7 @@ class ToolsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
     final tools = <_Tool>[
       _Tool(Icons.hourglass_bottom, 'Money → time', 'See any amount as work-time',
           AppColors.time, () => const TimeValueScreen()),
@@ -47,51 +48,66 @@ class ToolsScreen extends StatelessWidget {
           AppColors.positive, () => const RetirementCalculatorScreen()),
     ];
 
+    // Read viewPadding here, BEFORE any child Scaffold intercepts MediaQuery.
+    final safeBottom = MediaQuery.of(context).viewPadding.bottom;
+    // 92 = floating nav pill (~64dp) + bottom margin (14dp) + buffer (14dp).
+    const double navPill = 92;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Tools')),
-      body: ContentWidth(
-        child: ListView.separated(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-          itemCount: tools.length,
-          separatorBuilder: (_, _) => const SizedBox(height: 12),
-          itemBuilder: (_, i) {
-          final tool = tools[i];
-          return InkWell(
-            borderRadius: BorderRadius.circular(20),
-            onTap: () => Navigator.of(context)
-                .push(MaterialPageRoute(builder: (_) => tool.builder())),
-            child: SectionCard(
-              child: Row(
-                children: [
-                  Container(
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      color: tool.color.withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Center(
-                        child: Icon(tool.icon, color: tool.color, size: 26)),
+      body: SafeArea(
+        // top handled by SafeArea, but we handle bottom manually with padding.
+        bottom: false,
+        child: ContentWidth(
+          child: ListView.separated(
+            padding: EdgeInsets.fromLTRB(16, 16, 16, safeBottom + navPill),
+            // +1 for the title header row
+            itemCount: tools.length + 1,
+            separatorBuilder: (_, i) =>
+                i == 0 ? const SizedBox(height: 20) : const SizedBox(height: 12),
+            itemBuilder: (_, i) {
+              if (i == 0) {
+                return Text(
+                  'Tools',
+                  style: t.headlineLarge?.copyWith(fontWeight: FontWeight.bold),
+                );
+              }
+              final tool = tools[i - 1];
+              return InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: () => Navigator.of(context)
+                    .push(MaterialPageRoute(builder: (_) => tool.builder())),
+                child: SectionCard(
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          color: tool.color.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Center(
+                          child: Icon(tool.icon, color: tool.color, size: 26),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(tool.title, style: t.titleLarge),
+                            const SizedBox(height: 2),
+                            Text(tool.subtitle, style: t.bodyMedium),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right),
+                    ],
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(tool.title,
-                            style: Theme.of(context).textTheme.titleLarge),
-                        const SizedBox(height: 2),
-                        Text(tool.subtitle,
-                            style: Theme.of(context).textTheme.bodyMedium),
-                      ],
-                    ),
-                  ),
-                  const Icon(Icons.chevron_right),
-                ],
-              ),
-            ),
-          );
-          },
+                ),
+              );
+            },
+          ),
         ),
       ),
     );

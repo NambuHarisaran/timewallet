@@ -154,6 +154,14 @@ class _TimeValueState extends ConsumerState<TimeValueScreen> {
   double _amount = 1000;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(triedWorthItProvider.notifier).setCompleted();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final profile = ref.watch(profileOrDefaultProvider);
     final tracks = profile.tracksTime;
