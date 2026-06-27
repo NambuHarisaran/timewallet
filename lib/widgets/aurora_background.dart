@@ -14,7 +14,9 @@ class AuroraBackground extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final base = isDark ? AppColors.darkBg : AppColors.lightBg;
-    final blobAlpha = isDark ? 0.55 : 0.30;
+    // Bold direction: vivid, saturated glow — the background is part of the
+    // brand, not a faint wash.
+    final blobAlpha = isDark ? 0.95 : 0.55;
 
     return Positioned.fill(
       child: IgnorePointer(
@@ -26,24 +28,31 @@ class AuroraBackground extends StatelessWidget {
           child: Stack(
             children: [
               _blob(
-                top: -120,
-                left: -100,
-                size: 360,
+                top: -160,
+                left: -120,
+                size: 460,
                 colors: AppColors.auroraViolet,
                 alpha: blobAlpha,
               ),
               _blob(
-                top: -60,
-                right: -120,
-                size: 320,
+                top: -100,
+                right: -140,
+                size: 420,
                 colors: AppColors.auroraMoney,
-                alpha: blobAlpha * 0.9,
+                alpha: blobAlpha * 0.95,
               ),
               _blob(
-                bottom: -140,
-                left: -80,
-                size: 380,
+                bottom: -180,
+                right: -100,
+                size: 440,
                 colors: AppColors.auroraTime,
+                alpha: blobAlpha * 0.8,
+              ),
+              _blob(
+                bottom: -160,
+                left: -120,
+                size: 420,
+                colors: AppColors.auroraGreen,
                 alpha: blobAlpha * 0.7,
               ),
             ],

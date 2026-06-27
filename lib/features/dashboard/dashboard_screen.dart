@@ -4,10 +4,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_spacing.dart';
 import '../../core/time/duration_format.dart';
 import '../../data/models/expense.dart';
 import '../../state/app_providers.dart';
+import '../../widgets/celebrate.dart';
 import '../../widgets/gradient_card.dart';
+import '../../widgets/gradient_text.dart';
+import '../../widgets/info_dot.dart';
+import '../../widgets/pressable.dart';
 import '../../widgets/progress_ring.dart';
 import '../../widgets/responsive_body.dart';
 import '../../widgets/section_card.dart';
@@ -60,14 +65,30 @@ class DashboardScreen extends ConsumerWidget {
               _header(context, profile.name, ref.watch(streakProvider)),
               const SizedBox(height: 20),
 
+              // First-run guidance: teaches the core loop, self-dismisses.
+              _StartHereCard(onLogWork: () => _logWorkSheet(context, ref)),
+
               // Hero: earnings (time mode) OR budget (allowance mode)
               if (tracksTime)
                 GradientCard(
                   colors: AppColors.auroraMoney,
                   child: Column(
                     children: [
-                      Text('Earned today',
-                          style: t.labelSmall?.copyWith(color: Colors.white70)),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('Earned today',
+                              style: t.labelSmall
+                                  ?.copyWith(color: Colors.white70)),
+                          const SizedBox(width: 4),
+                          const InfoDot(
+                            color: Colors.white70,
+                            title: 'Earned today',
+                            body:
+                                'Your pay so far today — the hours you logged turned into rupees at your hourly rate. Log more work to watch it grow. Overtime counts only if you marked it paid.',
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 6),
                       _Ticker(
                           value: earnedToday,
@@ -151,8 +172,21 @@ class DashboardScreen extends ConsumerWidget {
                       : AppColors.auroraGreen,
                   child: Column(
                     children: [
-                      Text('Budget left this month',
-                          style: t.labelSmall?.copyWith(color: Colors.white70)),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('Budget left this month',
+                              style: t.labelSmall
+                                  ?.copyWith(color: Colors.white70)),
+                          const SizedBox(width: 4),
+                          const InfoDot(
+                            color: Colors.white70,
+                            title: 'Budget mode',
+                            body:
+                                'You have pocket money or no fixed income, so spending is tracked against your monthly budget instead of being converted to work-time.',
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 6),
                       _Ticker(
                           value: budgetLeft,
@@ -194,7 +228,11 @@ class DashboardScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(fmt.format(todaySpend), style: t.headlineMedium),
+                    GradientText(
+                      fmt.format(todaySpend),
+                      colors: AppColors.auroraMoney,
+                      style: t.displayLarge?.copyWith(fontSize: 34),
+                    ),
                     const SizedBox(height: 4),
                     Text(
                       todaySpend <= 0
@@ -404,6 +442,7 @@ class DashboardScreen extends ConsumerWidget {
                     return ActionChip(
                       label: Text(TimeFormat.hm(m)),
                       onPressed: () {
+                        HapticFeedback.selectionClick();
                         ref.read(appActionsProvider).logWork(m);
                         Navigator.pop(context);
                       },
@@ -447,10 +486,12 @@ class _Ticker extends StatelessWidget {
       curve: Curves.easeOut,
       builder: (_, v, _) => Text(
         formatter.format(v),
-        style: Theme.of(context)
-            .textTheme
-            .displayLarge
-            ?.copyWith(color: color, fontSize: 44),
+        style: Theme.of(context).textTheme.displayLarge?.copyWith(
+              color: color,
+              fontSize: 58,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -2.0,
+            ),
       ),
     );
   }
@@ -462,8 +503,7 @@ class _QuickCheckCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
-    return InkWell(
-      borderRadius: BorderRadius.circular(24),
+    return Pressable(
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => const TimeValueScreen()),
       ),
@@ -471,7 +511,7 @@ class _QuickCheckCard extends StatelessWidget {
         child: Row(
           children: [
             const Icon(Icons.search, size: 26, color: AppColors.money),
-            const SizedBox(width: 14),
+            Gap.w12,
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -482,6 +522,128 @@ class _QuickCheckCard extends StatelessWidget {
               ),
             ),
             const Icon(Icons.chevron_right),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// First-run "Start here" checklist. Teaches the core loop by doing, then
+/// disappears once the user has logged work (time-mode) and added an expense.
+class _StartHereCard extends ConsumerWidget {
+  final VoidCallback onLogWork;
+  const _StartHereCard({required this.onLogWork});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final profile = ref.watch(profileOrDefaultProvider);
+    final tracksTime = profile.tracksTime;
+    final hasWorked =
+        (ref.watch(workedProvider).asData?.value ?? const {}).isNotEmpty;
+    final hasExpense =
+        (ref.watch(expensesProvider).asData?.value ?? const []).isNotEmpty;
+
+    // Required steps: log work (time-mode only) + add an expense.
+    final workDone = !tracksTime || hasWorked;
+    if (workDone && hasExpense) return const SizedBox.shrink();
+
+    final t = Theme.of(context).textTheme;
+    final steps = <Widget>[
+      if (tracksTime)
+        _StepTile(
+          done: hasWorked,
+          icon: Icons.timer_outlined,
+          title: 'Log your first work time',
+          subtitle: 'Watch your earnings start to grow',
+          onTap: hasWorked ? null : onLogWork,
+        ),
+      _StepTile(
+        done: hasExpense,
+        icon: Icons.payments_outlined,
+        title: 'Add your first expense',
+        subtitle: 'See its real cost in hours, not just rupees',
+        onTap: hasExpense
+            ? null
+            : () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => const AddExpenseScreen())),
+      ),
+      _StepTile(
+        done: false,
+        icon: Icons.search,
+        title: 'Try "Worth it?"',
+        subtitle: 'Check any price in work-time before you buy',
+        onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const TimeValueScreen())),
+      ),
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: SectionCard(
+        title: 'START HERE',
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('A few taps to see your money as time.',
+                style: t.bodyMedium?.copyWith(color: AppColors.darkMuted)),
+            const SizedBox(height: 8),
+            ...steps,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// One row in the Start-here checklist.
+class _StepTile extends StatelessWidget {
+  final bool done;
+  final IconData icon;
+  final String title, subtitle;
+  final VoidCallback? onTap;
+  const _StepTile({
+    required this.done,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return Pressable(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          children: [
+            Icon(
+              done ? Icons.check_circle : icon,
+              size: 26,
+              color: done ? AppColors.positive : AppColors.money,
+            ),
+            Gap.w12,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: t.titleMedium?.copyWith(
+                      decoration: done ? TextDecoration.lineThrough : null,
+                      color: done ? AppColors.darkMuted : null,
+                    ),
+                  ),
+                  if (!done)
+                    Text(subtitle,
+                        style: t.bodySmall
+                            ?.copyWith(color: AppColors.darkMuted)),
+                ],
+              ),
+            ),
+            if (!done && onTap != null) const Icon(Icons.chevron_right),
           ],
         ),
       ),
@@ -550,6 +712,11 @@ class _ReclaimedCard extends ConsumerWidget {
                 "You've reclaimed ${TimeFormat.longForm(reclaimed, hoursPerDay: profile.hoursPerDay)} of your life by skipping wants.",
                 style: t.bodyLarge,
               ),
+            ),
+            const InfoDot(
+              title: 'Reclaimed time',
+              body:
+                  'The total work-time you saved by skipping wants you had on hold. Proof of the life you bought back.',
             ),
           ],
         ),
@@ -639,6 +806,11 @@ class _HeldList extends ConsumerWidget {
       padding: const EdgeInsets.only(bottom: 16),
       child: SectionCard(
         title: 'ON HOLD (24h)',
+        trailing: const InfoDot(
+          title: 'On hold (24 hours)',
+          body:
+              'Wants you paused before buying. After 24 hours, decide with a clear head: Buy it, or Skip and reclaim that work-time.',
+        ),
         child: Column(
           children: held.map((e) {
             return Padding(
@@ -669,6 +841,7 @@ class _HeldList extends ConsumerWidget {
                   TextButton(
                     onPressed: () {
                       ref.read(appActionsProvider).releaseHeld(e);
+                      celebrate(context);
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(

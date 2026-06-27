@@ -35,21 +35,27 @@ class SectionCard extends StatelessWidget {
               isDark ? AppColors.glassDarkBorder : AppColors.glassLightBorder,
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (title != null) ...[
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(title!, style: Theme.of(context).textTheme.labelSmall),
-                ?trailing,
-              ],
-            ),
-            const SizedBox(height: 14),
+      // Transparent Material so ListTiles / InkWells inside the card have an
+      // ink surface above the coloured fill (otherwise their splash and any
+      // tile colour are painted under the fill and warn as invisible).
+      child: Material(
+        type: MaterialType.transparency,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (title != null) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(title!, style: Theme.of(context).textTheme.labelSmall),
+                  ?trailing,
+                ],
+              ),
+              const SizedBox(height: 14),
+            ],
+            child,
           ],
-          child,
-        ],
+        ),
       ),
     );
   }

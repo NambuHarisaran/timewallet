@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:google_sign_in/google_sign_in.dart';
 
 import '../utils/browser_detector.dart' as detector;
 
@@ -61,7 +62,21 @@ class AuthService {
       }
       return _auth.signInWithPopup(provider);
     }
-    return _auth.signInWithProvider(provider);
+    
+    // Mobile native: Use google_sign_in package for native in-app dialog (like Spotify)
+    final GoogleSignIn googleSignIn = GoogleSignIn(
+      scopes: ['email'],
+    );
+    final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+    if (googleUser == null) {
+      return null; // User cancelled
+    }
+    final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+    final AuthCredential credential = GoogleAuthProvider.credential(
+      accessToken: googleAuth.accessToken,
+      idToken: googleAuth.idToken,
+    );
+    return await _auth.signInWithCredential(credential);
   }
 
   Future<void> sendPasswordReset(String email) =>
@@ -71,7 +86,16 @@ class AuthService {
 
   Future<void> reloadUser() => _auth.currentUser?.reload() ?? Future.value();
 
-  Future<void> signOut() => _auth.signOut();
+  Future<void> signOut() async {
+    await _auth.signOut();
+    if (!kIsWeb) {
+      try {
+        await GoogleSignIn().signOut();
+      } catch (_) {
+        // Safe to ignore if not signed in with Google
+      }
+    }
+  }
 
   /// Human-readable message for a FirebaseAuthException code.
   static String describeError(Object e) {

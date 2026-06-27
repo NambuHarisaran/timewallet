@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../widgets/gradient_card.dart';
+import '../help/glossary_screen.dart';
 
 class _Step {
   final IconData icon;
@@ -121,10 +122,19 @@ class _WalkthroughScreenState extends State<WalkthroughScreen> {
               }),
             ),
             Padding(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
               child: FilledButton(
                 onPressed: _next,
                 child: Text(last ? "Got it — let's go" : 'Next'),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: TextButton.icon(
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => const GlossaryScreen())),
+                icon: const Icon(Icons.menu_book_outlined, size: 18),
+                label: const Text('What the words mean'),
               ),
             ),
           ],

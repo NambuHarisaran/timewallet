@@ -51,16 +51,19 @@ class AppTheme {
       splashFactory: InkSparkle.splashFactory,
       textTheme: baseText.copyWith(
         displayLarge: GoogleFonts.inter(
-          fontSize: 36,
-          fontWeight: FontWeight.w800,
+          fontSize: 40,
+          fontWeight: FontWeight.w900,
           color: text,
-          letterSpacing: -1.0,
+          letterSpacing: -1.4,
+          height: 1.0,
+          fontFeatures: const [FontFeature.tabularFigures()],
         ),
         headlineMedium: GoogleFonts.inter(
-          fontSize: 24,
-          fontWeight: FontWeight.w700,
+          fontSize: 26,
+          fontWeight: FontWeight.w800,
           color: text,
-          letterSpacing: -0.4,
+          letterSpacing: -0.6,
+          fontFeatures: const [FontFeature.tabularFigures()],
         ),
         titleLarge: GoogleFonts.inter(
           fontSize: 19,

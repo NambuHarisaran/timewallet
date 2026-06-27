@@ -15,6 +15,7 @@ import '../expense/expenses_screen.dart';
 import '../history/history_screen.dart';
 import '../insights/insights_screen.dart';
 import '../recurring/recurring_screen.dart';
+import '../help/glossary_screen.dart';
 import '../salary/salary_setup_screen.dart';
 import '../walkthrough/walkthrough_screen.dart';
 import '../wrapped/wrapped_screen.dart';
@@ -42,7 +43,7 @@ class ProfileScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Profile')),
       body: ContentWidth(
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
           children: [
           // Identity header
           SectionCard(
@@ -142,6 +143,16 @@ class ProfileScreen extends ConsumerWidget {
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.of(context).push(MaterialPageRoute(
                       builder: (_) => const WalkthroughScreen())),
+                ),
+                const Divider(),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.menu_book_outlined),
+                  title: const Text('What the words mean'),
+                  subtitle: const Text('Plain-language glossary of every term'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => const GlossaryScreen())),
                 ),
                 const Divider(),
                 ListTile(

@@ -51,7 +51,7 @@ class ToolsScreen extends StatelessWidget {
       appBar: AppBar(title: const Text('Tools')),
       body: ContentWidth(
         child: ListView.separated(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
           itemCount: tools.length,
           separatorBuilder: (_, _) => const SizedBox(height: 12),
           itemBuilder: (_, i) {

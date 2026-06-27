@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -76,6 +77,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (cred == null) {
         // Redirect flow (mobile web) — the page will reload after Google
         // authenticates. Keep the spinner; no further action needed here.
+        if (kIsWeb) return;
+        
+        // Native mobile user cancelled or failed — stop the spinner.
+        if (mounted) setState(() => _busy = false);
         return;
       }
       // Popup flow succeeded — authStateProvider stream flips → AuthGate

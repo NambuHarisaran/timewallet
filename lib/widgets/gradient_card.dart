@@ -16,10 +16,8 @@ class GradientCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final radius = BorderRadius.circular(28);
-    return Container(
-      width: double.infinity,
-      padding: padding,
+    final radius = BorderRadius.circular(30);
+    return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: radius,
         gradient: LinearGradient(
@@ -29,15 +27,44 @@ class GradientCard extends StatelessWidget {
         ),
         border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
         boxShadow: [
+          // Coloured glow — vivid, bold.
           BoxShadow(
-            color: colors.last.withValues(alpha: 0.45),
-            blurRadius: 32,
-            spreadRadius: -6,
-            offset: const Offset(0, 14),
+            color: colors.last.withValues(alpha: 0.50),
+            blurRadius: 36,
+            spreadRadius: -4,
+            offset: const Offset(0, 16),
           ),
         ],
       ),
-      child: child,
+      child: ClipRRect(
+        borderRadius: radius,
+        child: Stack(
+          children: [
+            // Glossy top-left highlight for depth.
+            Positioned(
+              top: -60,
+              left: -40,
+              child: Container(
+                width: 220,
+                height: 220,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      Colors.white.withValues(alpha: 0.22),
+                      Colors.white.withValues(alpha: 0.0),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: padding,
+              child: SizedBox(width: double.infinity, child: child),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
