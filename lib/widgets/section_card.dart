@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../core/theme/app_colors.dart';
 
-/// Translucent surface card with an optional title row. Uses a solid
-/// semi-opaque fill over the aurora background (instead of a per-card
-/// BackdropFilter) — same frosted look, far cheaper in long scrolling lists.
+/// Solid surface card with an optional title row and a hairline border.
+/// Midnight Mono: flat charcoal (dark) / white (light), no translucency.
 class SectionCard extends StatelessWidget {
   final String? title;
   final Widget child;
@@ -26,13 +25,10 @@ class SectionCard extends StatelessWidget {
       width: double.infinity,
       padding: padding,
       decoration: BoxDecoration(
-        color: isDark
-            ? AppColors.darkSurface.withValues(alpha: 0.72)
-            : Colors.white.withValues(alpha: 0.86),
-        borderRadius: BorderRadius.circular(24),
+        color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color:
-              isDark ? AppColors.glassDarkBorder : AppColors.glassLightBorder,
+          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
         ),
       ),
       // Transparent Material so ListTiles / InkWells inside the card have an

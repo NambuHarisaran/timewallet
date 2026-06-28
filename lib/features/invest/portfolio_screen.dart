@@ -132,7 +132,7 @@ class _SummaryCard extends ConsumerWidget {
     final plMinutes = profile.engine.minutesFor(summary.pl.abs());
 
     return GradientCard(
-      colors: up ? AppColors.auroraMoney : AppColors.auroraWarn,
+      colors: up ? AppColors.auroraGreen : AppColors.auroraWarn,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

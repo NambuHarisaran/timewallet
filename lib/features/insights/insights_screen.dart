@@ -186,14 +186,10 @@ class _WeekBarChart extends StatelessWidget {
                 Container(
                   height: 8 + (daily[i] / scale) * 96,
                   margin: const EdgeInsets.symmetric(horizontal: 5),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      begin: Alignment.bottomCenter,
-                      end: Alignment.topCenter,
-                      colors: AppColors.auroraMoney,
-                    ),
-                    borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(6)),
+                  decoration: const BoxDecoration(
+                    color: AppColors.accent,
+                    borderRadius:
+                        BorderRadius.vertical(top: Radius.circular(6)),
                   ),
                 ),
                 const SizedBox(height: 6),

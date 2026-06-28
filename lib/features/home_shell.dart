@@ -255,25 +255,14 @@ class _NavItem extends StatelessWidget {
         padding: EdgeInsets.symmetric(
             horizontal: selected ? 16 : 12, vertical: 11),
         decoration: BoxDecoration(
-          gradient: selected
-              ? const LinearGradient(colors: AppColors.auroraMoney)
-              : null,
+          color: selected ? AppColors.accent : null,
           borderRadius: BorderRadius.circular(22),
-          boxShadow: selected
-              ? [
-                  BoxShadow(
-                    color: AppColors.accent.withValues(alpha: 0.45),
-                    blurRadius: 18,
-                    offset: const Offset(0, 6),
-                  ),
-                ]
-              : null,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon,
-                size: 24, color: selected ? Colors.white : muted),
+                size: 24, color: selected ? AppColors.darkBg : muted),
             if (selected) ...[
               const SizedBox(width: 6),
               Flexible(
@@ -282,7 +271,7 @@ class _NavItem extends StatelessWidget {
                     overflow: TextOverflow.clip,
                     softWrap: false,
                     style: const TextStyle(
-                        color: Colors.white,
+                        color: AppColors.darkBg,
                         fontWeight: FontWeight.w700,
                         fontSize: 13)),
               ),

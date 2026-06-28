@@ -4,8 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'app_colors.dart';
 
-/// Aurora fintech theme. Inter typeface, rounded glass surfaces, transparent
-/// scaffold so the global [AuroraBackground] shows through every screen.
+/// Midnight Mono theme. Inter for text, a mono face for the big numbers,
+/// solid charcoal surfaces, hairline borders, a single amber accent.
 class AppTheme {
   static const double radiusCard = 24;
   static const double radiusInner = 14;
@@ -25,9 +25,9 @@ class AppTheme {
 
     final scheme = ColorScheme(
       brightness: brightness,
-      primary: AppColors.money,
-      onPrimary: Colors.white,
-      secondary: AppColors.accent,
+      primary: AppColors.accent,
+      onPrimary: AppColors.darkBg, // dark text on amber
+      secondary: AppColors.money,
       onSecondary: Colors.white,
       tertiary: AppColors.time,
       error: AppColors.warn,
@@ -46,13 +46,15 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
-      scaffoldBackgroundColor: Colors.transparent,
+      scaffoldBackgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
       colorScheme: scheme,
       splashFactory: InkSparkle.splashFactory,
       textTheme: baseText.copyWith(
-        displayLarge: GoogleFonts.inter(
+        // Big money/number readouts use a mono face — the "ledger" signature.
+        // JetBrains Mono (not Space Mono) — it ships the ₹ glyph (U+20B9).
+        displayLarge: GoogleFonts.jetBrainsMono(
           fontSize: 40,
-          fontWeight: FontWeight.w900,
+          fontWeight: FontWeight.w700,
           color: text,
           letterSpacing: -1.4,
           height: 1.0,
@@ -99,8 +101,8 @@ class AppTheme {
       navigationBarTheme: NavigationBarThemeData(
         height: 66,
         backgroundColor: isDark
-            ? AppColors.darkSurface.withValues(alpha: 0.85)
-            : AppColors.lightSurface.withValues(alpha: 0.9),
+            ? AppColors.darkSurface
+            : AppColors.lightSurface,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         indicatorColor: AppColors.accent.withValues(alpha: 0.18),
@@ -130,7 +132,7 @@ class AppTheme {
         style: FilledButton.styleFrom(
           minimumSize: const Size.fromHeight(54),
           backgroundColor: AppColors.accent,
-          foregroundColor: Colors.white,
+          foregroundColor: AppColors.darkBg,
           textStyle:
               GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700),
           shape: RoundedRectangleBorder(
@@ -178,7 +180,7 @@ class AppTheme {
       ),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
         backgroundColor: AppColors.accent,
-        foregroundColor: Colors.white,
+        foregroundColor: AppColors.darkBg,
         elevation: 0,
       ),
       inputDecorationTheme: InputDecorationTheme(

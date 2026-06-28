@@ -8,7 +8,6 @@ import 'features/auth/verify_email_screen.dart';
 import 'features/home_shell.dart';
 import 'features/onboarding/onboarding_screen.dart';
 import 'state/app_providers.dart';
-import 'widgets/aurora_background.dart';
 
 class TimeWalletApp extends ConsumerWidget {
   const TimeWalletApp({super.key});
@@ -22,12 +21,6 @@ class TimeWalletApp extends ConsumerWidget {
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: mode,
-      builder: (context, child) => Stack(
-        children: [
-          const AuroraBackground(),
-          ?child,
-        ],
-      ),
       home: const _AuthGate(),
     );
   }

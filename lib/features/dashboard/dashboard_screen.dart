@@ -12,7 +12,6 @@ import '../../state/app_providers.dart';
 import '../../widgets/celebrate.dart';
 import '../../widgets/first_time_tip.dart';
 import '../../widgets/gradient_card.dart';
-import '../../widgets/gradient_text.dart';
 import '../../widgets/info_dot.dart';
 import '../../widgets/pressable.dart';
 import '../../widgets/progress_ring.dart';
@@ -277,10 +276,10 @@ class DashboardScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    GradientText(
+                    Text(
                       fmt.format(todaySpend),
-                      colors: AppColors.auroraMoney,
-                      style: t.displayLarge?.copyWith(fontSize: 34),
+                      style: t.displayLarge
+                          ?.copyWith(fontSize: 34, color: AppColors.time),
                     ),
                     const SizedBox(height: 4),
                     Text(

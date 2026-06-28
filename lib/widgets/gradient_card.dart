@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
-/// Vivid gradient hero panel with a soft outer glow and a subtle top highlight.
-/// Used for the flagship cards (dashboard earnings, portfolio value).
+/// Flat hero panel — a single elevated charcoal surface with a hairline border.
+/// No glow, no glossy highlight. The [colors] still drive a *subtle* top-to-
+/// bottom shade for depth; semantic tints (green/warn) come through quietly.
 class GradientCard extends StatelessWidget {
   final List<Color> colors;
   final Widget child;
@@ -16,54 +17,20 @@ class GradientCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final radius = BorderRadius.circular(30);
-    return DecoratedBox(
+    final radius = BorderRadius.circular(20);
+    return Container(
       decoration: BoxDecoration(
         borderRadius: radius,
         gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
           colors: colors,
         ),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
-        boxShadow: [
-          // Coloured glow — vivid, bold.
-          BoxShadow(
-            color: colors.last.withValues(alpha: 0.50),
-            blurRadius: 36,
-            spreadRadius: -4,
-            offset: const Offset(0, 16),
-          ),
-        ],
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
-      child: ClipRRect(
-        borderRadius: radius,
-        child: Stack(
-          children: [
-            // Glossy top-left highlight for depth.
-            Positioned(
-              top: -60,
-              left: -40,
-              child: Container(
-                width: 220,
-                height: 220,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      Colors.white.withValues(alpha: 0.22),
-                      Colors.white.withValues(alpha: 0.0),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            Padding(
-              padding: padding,
-              child: SizedBox(width: double.infinity, child: child),
-            ),
-          ],
-        ),
+      child: Padding(
+        padding: padding,
+        child: SizedBox(width: double.infinity, child: child),
       ),
     );
   }
