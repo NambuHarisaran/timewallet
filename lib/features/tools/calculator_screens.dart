@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -540,6 +541,46 @@ class _CalcSlider extends StatelessWidget {
       this.onChanged, this.display,
       {this.accent = AppColors.time});
 
+  /// Plain numeric string for prefilling / range hints (no currency or unit).
+  static String _plain(double v) =>
+      v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(2);
+
+  /// Tap the value to type an exact number — for precision the slider's
+  /// discrete steps can't hit. The result is clamped into [min, max] so the
+  /// Slider stays valid; the drag path is untouched.
+  Future<void> _editValue(BuildContext context) async {
+    final ctrl = TextEditingController(text: _plain(value));
+    final entered = await showDialog<double>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(label),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+          ],
+          decoration: InputDecoration(
+            hintText: 'Enter exact value',
+            helperText: 'Allowed range ${_plain(min)} – ${_plain(max)}',
+          ),
+          onSubmitted: (s) => Navigator.pop(ctx, double.tryParse(s)),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () =>
+                Navigator.pop(ctx, double.tryParse(ctrl.text)),
+            child: const Text('Set'),
+          ),
+        ],
+      ),
+    );
+    if (entered != null) onChanged(entered.clamp(min, max).toDouble());
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
@@ -549,10 +590,25 @@ class _CalcSlider extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label, style: t.bodyMedium),
-            Text(display,
-                style: t.bodyLarge
-                    ?.copyWith(color: accent, fontWeight: FontWeight.w600)),
+            Flexible(child: Text(label, style: t.bodyMedium)),
+            // Tap the value to enter it precisely.
+            InkWell(
+              borderRadius: BorderRadius.circular(8),
+              onTap: () => _editValue(context),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(display,
+                        style: t.bodyLarge?.copyWith(
+                            color: accent, fontWeight: FontWeight.w600)),
+                    const SizedBox(width: 4),
+                    Icon(Icons.edit, size: 14, color: accent),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
         SliderTheme(

@@ -26,6 +26,7 @@ import '../recurring/recurring_screen.dart';
 import '../share/share_card_screen.dart';
 import '../tools/calculator_screens.dart';
 import '../walkthrough/walkthrough_screen.dart';
+import '../worth/worth_quiz_screen.dart';
 import '../wrapped/wrapped_screen.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -243,6 +244,13 @@ class DashboardScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
+              // Money balance left this month (income − spend). Budget mode
+              // already shows this in its hero, so only add it in time mode.
+              if (tracksTime) ...[
+                const SizedBox(height: 12),
+                _BalanceCard(),
+              ],
+
               // First-time explainer the moment overtime appears.
               if (tracksTime && work.overtime > 0)
                 const FirstTimeTip(
@@ -535,6 +543,63 @@ class _Ticker extends StatelessWidget {
   }
 }
 
+/// Available money this month = monthly income − money spent this month.
+/// Time-mode users otherwise only see hours; this grounds them in rupees.
+class _BalanceCard extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final profile = ref.watch(profileOrDefaultProvider);
+    final income = profile.monthlyMoney;
+    if (income <= 0) return const SizedBox.shrink();
+    final monthSpend = ref.watch(monthSpendProvider);
+    final balance = income - monthSpend;
+    final spentPct = (monthSpend / income).clamp(0.0, 1.0);
+    final low = balance < income * 0.1;
+    final t = Theme.of(context).textTheme;
+    final fmt = NumberFormat.currency(symbol: '₹', decimalDigits: 0);
+    final color = low ? AppColors.warn : AppColors.positive;
+
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.account_balance_wallet_outlined,
+                  size: 20, color: color),
+              const SizedBox(width: 8),
+              Text('BALANCE LEFT THIS MONTH', style: t.labelSmall),
+              const Spacer(),
+              const InfoDot(
+                title: 'Balance left',
+                body:
+                    'Your monthly income minus everything you have spent so far this calendar month. Resets at the start of each month.',
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(fmt.format(balance),
+              style: t.displayLarge
+                  ?.copyWith(fontSize: 34, color: color)),
+          const SizedBox(height: 4),
+          Text('${fmt.format(monthSpend)} spent of ${fmt.format(income)}',
+              style: t.bodyMedium?.copyWith(color: AppColors.darkMuted)),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: spentPct,
+              minHeight: 7,
+              backgroundColor: AppColors.darkBorder,
+              valueColor: AlwaysStoppedAnimation(color),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// Tap to check any price in work-time (promotes the Money→time tool).
 class _QuickCheckCard extends StatelessWidget {
   const _QuickCheckCard();
@@ -543,19 +608,19 @@ class _QuickCheckCard extends StatelessWidget {
     final t = Theme.of(context).textTheme;
     return Pressable(
       onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const TimeValueScreen()),
+        MaterialPageRoute(builder: (_) => const WorthQuizScreen()),
       ),
       child: SectionCard(
         child: Row(
           children: [
-            const Icon(Icons.search, size: 26, color: AppColors.money),
+            const Icon(Icons.help_outline, size: 26, color: AppColors.money),
             Gap.w12,
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text("What's it worth?", style: t.titleLarge),
-                  Text('Check any price in work-time', style: t.bodyMedium),
+                  Text('Answer a few questions, get a verdict', style: t.bodyMedium),
                 ],
               ),
             ),

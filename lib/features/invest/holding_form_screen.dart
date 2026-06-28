@@ -27,6 +27,7 @@ class _HoldingFormScreenState extends ConsumerState<HoldingFormScreen> {
   late AssetType _type;
   late DateTime _buyDate;
   String? _purity; // gold only
+  bool _submitting = false; // guards against double-tap creating duplicates
 
   static const _purities = ['24k', '22k', '18k'];
 
@@ -74,7 +75,9 @@ class _HoldingFormScreenState extends ConsumerState<HoldingFormScreen> {
   }
 
   Future<void> _save() async {
+    if (_submitting) return;
     if (!_formKey.currentState!.validate()) return;
+    setState(() => _submitting = true);
     final units = double.parse(_units.text);
     final buyPrice = double.parse(_buyPrice.text);
     final current = _currentPrice.text.trim().isEmpty
@@ -85,31 +88,36 @@ class _HoldingFormScreenState extends ConsumerState<HoldingFormScreen> {
         _symbol.text.trim().isEmpty ? null : _symbol.text.trim().toUpperCase();
 
     final actions = ref.read(appActionsProvider);
-    if (_isEdit) {
-      await actions.saveHolding(widget.holding!.copyWith(
-        type: _type,
-        name: _name.text.trim(),
-        symbol: symbol,
-        units: units,
-        buyPrice: buyPrice,
-        buyDate: _buyDate,
-        manualPrice: current,
-        clearManualPrice: current == null,
-        meta: meta,
-      ));
-    } else {
-      await actions.addHolding(
-        type: _type,
-        name: _name.text.trim(),
-        symbol: symbol,
-        units: units,
-        buyPrice: buyPrice,
-        buyDate: _buyDate,
-        manualPrice: current,
-        meta: meta,
-      );
+    try {
+      if (_isEdit) {
+        await actions.saveHolding(widget.holding!.copyWith(
+          type: _type,
+          name: _name.text.trim(),
+          symbol: symbol,
+          units: units,
+          buyPrice: buyPrice,
+          buyDate: _buyDate,
+          manualPrice: current,
+          clearManualPrice: current == null,
+          meta: meta,
+        ));
+      } else {
+        await actions.addHolding(
+          type: _type,
+          name: _name.text.trim(),
+          symbol: symbol,
+          units: units,
+          buyPrice: buyPrice,
+          buyDate: _buyDate,
+          manualPrice: current,
+          meta: meta,
+        );
+      }
+      if (mounted) Navigator.of(context).pop();
+    } catch (_) {
+      // Write failed — re-enable the button so the user can retry.
+      if (mounted) setState(() => _submitting = false);
     }
-    if (mounted) Navigator.of(context).pop();
   }
 
   @override
@@ -251,10 +259,16 @@ class _HoldingFormScreenState extends ConsumerState<HoldingFormScreen> {
               ],
               const SizedBox(height: 28),
               FilledButton(
-                onPressed: _save,
+                onPressed: _submitting ? null : _save,
                 style:
                     FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
-                child: Text(_isEdit ? 'Save changes' : 'Add holding'),
+                child: _submitting
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text(_isEdit ? 'Save changes' : 'Add holding'),
               ),
             ],
           ),

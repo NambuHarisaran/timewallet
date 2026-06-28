@@ -197,11 +197,17 @@ class _GoalTile extends ConsumerWidget {
               ],
             ),
           ),
-          IconButton(
-            onPressed: () => _addSavingSheet(context, ref),
-            icon: const Icon(Icons.add_circle_outline),
-            color: AppColors.positive,
-          ),
+          if (goal.progress >= 1)
+            const Padding(
+              padding: EdgeInsets.all(8),
+              child: Icon(Icons.check_circle, color: AppColors.positive),
+            )
+          else
+            IconButton(
+              onPressed: () => _addSavingSheet(context, ref),
+              icon: const Icon(Icons.add_circle_outline),
+              color: AppColors.positive,
+            ),
         ],
       ),
     );
