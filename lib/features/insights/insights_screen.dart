@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -5,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/time/duration_format.dart';
 import '../../data/models/expense.dart';
+import '../../data/models/user_profile.dart';
 import '../../state/app_providers.dart';
 import '../../widgets/responsive_body.dart';
 import '../../widgets/section_card.dart';
@@ -96,6 +99,10 @@ class InsightsScreen extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 16),
+
+                  // Life-energy ROI matrix (time cost vs joy)
+                  if (profile.tracksTime)
+                    _LifeEnergyCard(expenses: spent, profile: profile),
 
                   // Need vs want
                   if (monthTotal > 0)
@@ -197,6 +204,206 @@ class _WeekBarChart extends StatelessWidget {
       ],
     );
   }
+}
+
+/// A single plotted purchase: work-time cost vs joy (mood).
+class _Point {
+  final Expense e;
+  final double timeMin; // x: work-minutes the purchase cost
+  final double joy; // y: 0 bad, 0.5 neutral, 1 good
+  const _Point(this.e, this.timeMin, this.joy);
+
+  static double joyOf(Mood m) => switch (m) {
+        Mood.good => 1.0,
+        Mood.neutral => 0.5,
+        Mood.bad => 0.0,
+      };
+}
+
+/// Life-Energy ROI matrix — plots each purchase by hours-worked vs joy.
+/// Surfaces "Time Vampires": high work-time + low joy = regret you can cut.
+class _LifeEnergyCard extends StatelessWidget {
+  final List<Expense> expenses;
+  final UserProfile profile;
+  const _LifeEnergyCard({required this.expenses, required this.profile});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    // Only purchases with a real work-time cost are plottable.
+    final pts = [
+      for (final e in expenses)
+        if (e.timeCostMinutes > 0)
+          _Point(e, e.timeCostMinutes, _Point.joyOf(e.mood)),
+    ];
+    if (pts.length < 3) return const SizedBox.shrink();
+
+    final maxTime = pts.map((p) => p.timeMin).reduce((a, b) => a > b ? a : b);
+    final timeMid = maxTime / 2;
+
+    // Time Vampires: low joy (bad mood) + above-median work-time, worst first.
+    final vampires = pts
+        .where((p) => p.joy < 0.5 && p.timeMin >= timeMid)
+        .toList()
+      ..sort((a, b) => b.timeMin.compareTo(a.timeMin));
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: SectionCard(
+        title: 'LIFE-ENERGY MATRIX',
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Each dot is a purchase: how much life it cost vs how good it felt.',
+                style: t.bodySmall?.copyWith(color: Colors.white60)),
+            const SizedBox(height: 14),
+            AspectRatio(
+              aspectRatio: 1.25,
+              child: CustomPaint(
+                painter: _ScatterPainter(pts, maxTime),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 14,
+              runSpacing: 6,
+              children: const [
+                _Legend(color: AppColors.warn, label: 'Time Vampire'),
+                _Legend(color: AppColors.positive, label: 'Cheap joy'),
+                _Legend(color: AppColors.money, label: 'Worth it'),
+              ],
+            ),
+            if (vampires.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  const Icon(Icons.warning_amber_rounded,
+                      size: 18, color: AppColors.warn),
+                  const SizedBox(width: 6),
+                  Text('Your Time Vampires',
+                      style: t.titleMedium?.copyWith(color: AppColors.warn)),
+                ],
+              ),
+              const SizedBox(height: 8),
+              for (final p in vampires.take(3))
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    children: [
+                      Icon(p.e.category.icon, size: 18, color: Colors.white70),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          '${p.e.category.label}'
+                          '${p.e.note != null && p.e.note!.isNotEmpty ? ' · ${p.e.note}' : ''}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: t.bodyMedium,
+                        ),
+                      ),
+                      Text(
+                        TimeFormat.hm(p.timeMin,
+                            hoursPerDay: profile.hoursPerDay),
+                        style: t.bodyMedium?.copyWith(
+                            color: AppColors.warn,
+                            fontWeight: FontWeight.w700),
+                      ),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: 4),
+              Text(
+                'Cutting these buys back the most life for the least lost joy.',
+                style: t.bodySmall?.copyWith(color: Colors.white60),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Legend extends StatelessWidget {
+  final Color color;
+  final String label;
+  const _Legend({required this.color, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        const SizedBox(width: 5),
+        Text(label, style: Theme.of(context).textTheme.labelSmall),
+      ],
+    );
+  }
+}
+
+/// Paints the quadrant scatter. x = work-time (right = more), y = joy (up = more).
+class _ScatterPainter extends CustomPainter {
+  final List<_Point> pts;
+  final double maxTime;
+  const _ScatterPainter(this.pts, this.maxTime);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width, h = size.height;
+    final grid = Paint()
+      ..color = AppColors.darkBorder.withValues(alpha: 0.6)
+      ..strokeWidth = 1;
+
+    // Quadrant tints: bottom-right (high time, low joy) = vampire zone.
+    final vampZone = Paint()..color = AppColors.warn.withValues(alpha: 0.08);
+    final joyZone = Paint()..color = AppColors.positive.withValues(alpha: 0.07);
+    canvas.drawRect(Rect.fromLTWH(w / 2, h / 2, w / 2, h / 2), vampZone);
+    canvas.drawRect(Rect.fromLTWH(0, 0, w / 2, h / 2), joyZone);
+
+    // Mid crosshair.
+    canvas.drawLine(Offset(w / 2, 0), Offset(w / 2, h), grid);
+    canvas.drawLine(Offset(0, h / 2), Offset(w, h / 2), grid);
+    // Border.
+    canvas.drawRect(Rect.fromLTWH(0, 0, w, h), grid..style = PaintingStyle.stroke);
+
+    // Axis labels.
+    _label(canvas, 'less joy', Offset(4, h - 14), Colors.white38);
+    _label(canvas, 'more time →', Offset(w - 78, h - 14), Colors.white38);
+    _label(canvas, 'more joy', Offset(4, 4), Colors.white38);
+
+    final scale = maxTime <= 0 ? 1.0 : maxTime;
+    for (final p in pts) {
+      final x = (p.timeMin / scale).clamp(0.0, 1.0) * (w - 12) + 6;
+      final y = (1 - p.joy) * (h - 12) + 6; // joy up
+      final isVamp = p.joy < 0.5 && p.timeMin >= maxTime / 2;
+      final isCheapJoy = p.joy >= 0.5 && p.timeMin < maxTime / 2;
+      final color = isVamp
+          ? AppColors.warn
+          : isCheapJoy
+              ? AppColors.positive
+              : AppColors.money;
+      final r = 4.0 + (p.timeMin / scale).clamp(0.0, 1.0) * 5.0;
+      canvas.drawCircle(
+          Offset(x, y), r, Paint()..color = color.withValues(alpha: 0.85));
+    }
+  }
+
+  void _label(Canvas canvas, String s, Offset at, Color color) {
+    final tp = TextPainter(
+      text: TextSpan(
+          text: s, style: TextStyle(color: color, fontSize: 9)),
+      textDirection: ui.TextDirection.ltr,
+    )..layout();
+    tp.paint(canvas, at);
+  }
+
+  @override
+  bool shouldRepaint(_ScatterPainter old) =>
+      old.pts != pts || old.maxTime != maxTime;
 }
 
 class _Bar extends StatelessWidget {

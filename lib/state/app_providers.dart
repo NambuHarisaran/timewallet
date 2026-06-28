@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
+import '../core/util/engagement.dart';
 import '../data/backend/data_backend.dart';
 import '../data/backend/firestore_backend.dart';
 import '../data/models/activity.dart';
@@ -628,9 +629,18 @@ class DailyReminderNotifier extends Notifier<bool> {
     await ref.read(sharedPrefsProvider).setBool(_key, on);
     final svc = ref.read(notificationServiceProvider);
     if (on) {
+      // Snapshot provider state BEFORE the async permission gap to avoid reading
+      // stale values if upstream data changes while the OS prompt is open.
+      final profile = ref.read(profileOrDefaultProvider);
+      final body = dailyReminderMessage(
+        tracksTime: profile.tracksTime,
+        streak: ref.read(streakProvider),
+        subWorkDays:
+            profile.engine.daysFor(ref.read(monthlyRecurringCostProvider)),
+      );
       final granted = await svc.requestPermission();
       if (granted) {
-        await svc.enableDailyReminder();
+        await svc.enableDailyReminder(body: body);
       } else {
         state = false;
         await ref.read(sharedPrefsProvider).setBool(_key, false);

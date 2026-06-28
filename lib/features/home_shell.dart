@@ -12,7 +12,6 @@ import 'invest/holding_form_screen.dart';
 import 'invest/portfolio_screen.dart';
 import 'profile/profile_screen.dart';
 import 'tools/tools_screen.dart';
-import 'walkthrough/walkthrough_screen.dart';
 
 class HomeShell extends ConsumerStatefulWidget {
   const HomeShell({super.key});
@@ -23,29 +22,20 @@ class HomeShell extends ConsumerStatefulWidget {
 
 class _HomeShellState extends ConsumerState<HomeShell> {
   int _index = 0;
-  static const _seenKey = 'seenWalkthrough';
 
-  static const _tabs = [
-    DashboardScreen(),
-    GoalsScreen(),
-    PortfolioScreen(),
-    ToolsScreen(),
-    ProfileScreen(),
+  // Dashboard gets a callback so its GROW section can jump to the Goals/Invest/
+  // Tools tabs — reinforcing the EARN→SPEND→DECIDE→GROW spine.
+  late final List<Widget> _tabs = [
+    DashboardScreen(onTab: _select),
+    const GoalsScreen(),
+    const PortfolioScreen(),
+    const ToolsScreen(),
+    const ProfileScreen(),
   ];
 
-  @override
-  void initState() {
-    super.initState();
-    // First entry after onboarding: show the feature walkthrough once.
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final prefs = ref.read(sharedPrefsProvider);
-      if (prefs.getBool(_seenKey) == true) return;
-      await prefs.setBool(_seenKey, true);
-      if (!mounted) return;
-      await Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => const WalkthroughScreen(), fullscreenDialog: true));
-    });
-  }
+  // The feature tour is no longer force-shown on first entry — it competed with
+  // the first-session loop. Users reach it opt-in from the "Start here" card and
+  // Profile → How it works.
 
   static const _items = [
     (Icons.home_rounded, 'Home'),

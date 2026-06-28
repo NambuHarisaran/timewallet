@@ -420,6 +420,90 @@ class _FreedomState extends State<FinancialFreedomScreen> {
 }
 
 // ---------------------------------------------------------------------------
+// Crossover point — when passive income overtakes expenses
+// ---------------------------------------------------------------------------
+class CrossoverScreen extends ConsumerStatefulWidget {
+  const CrossoverScreen({super.key});
+  @override
+  ConsumerState<CrossoverScreen> createState() => _CrossoverState();
+}
+
+class _CrossoverState extends ConsumerState<CrossoverScreen> {
+  late double _corpus;
+  late double _expense;
+  double _invest = 20000, _rate = 12, _withdraw = 4;
+  bool _seeded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _corpus = 0;
+    _expense = 30000;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Seed once from the user's real portfolio + monthly spend.
+    if (!_seeded) {
+      final pv = ref.read(portfolioProvider).value;
+      final spend = ref.read(monthSpendProvider);
+      if (pv > 0) _corpus = pv;
+      if (spend > 0) _expense = spend;
+      _seeded = true;
+    }
+
+    final r = Calculators.crossover(
+      currentCorpus: _corpus,
+      monthlyInvest: _invest,
+      annualReturnPct: _rate,
+      monthlyExpense: _expense,
+      withdrawalRatePct: _withdraw,
+    );
+
+    final String value;
+    if (r.reached) {
+      value = "You're free now";
+    } else if (r.months >= 1200) {
+      value = '100+ years';
+    } else {
+      final date = DateTime.now().add(Duration(days: (r.months * 30.44).round()));
+      value = DateFormat('MMM yyyy').format(date);
+    }
+
+    return _CalcScaffold(
+      title: 'Crossover point',
+      sliders: [
+        _CalcSlider('Invested corpus now', _corpus, 0, 50000000, 999,
+            (v) => setState(() => _corpus = v), _money.format(_corpus),
+            accent: AppColors.accent),
+        _CalcSlider('Monthly expense', _expense, 5000, 500000, 99,
+            (v) => setState(() => _expense = v), _money.format(_expense),
+            accent: AppColors.accent),
+        _CalcSlider('Monthly investment', _invest, 0, 500000, 99,
+            (v) => setState(() => _invest = v), _money.format(_invest),
+            accent: AppColors.accent),
+        _CalcSlider('Expected return', _rate, 1, 20, 38,
+            (v) => setState(() => _rate = v), '${_rate.toStringAsFixed(1)}% p.a.',
+            accent: AppColors.accent),
+        _CalcSlider('Safe withdrawal', _withdraw, 2, 8, 24,
+            (v) => setState(() => _withdraw = v),
+            '${_withdraw.toStringAsFixed(1)}%',
+            accent: AppColors.accent),
+      ],
+      result: _SimpleResult(
+        accent: AppColors.accent,
+        headline: r.reached ? 'Passive income covers you' : 'Crossover around',
+        value: value,
+        footnote:
+            'Your ${_money.format(_corpus)} corpus throws off ${_money.format(r.passiveMonthlyNow)}/mo today — '
+            '${(r.coverPct * 100).toStringAsFixed(0)}% of your ${_money.format(_expense)} expenses. '
+            'Crossover needs a ${_money.format(r.targetCorpus)} corpus at ${_withdraw.toStringAsFixed(1)}% withdrawal.',
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Shared UI
 // ---------------------------------------------------------------------------
 class _CalcScaffold extends StatelessWidget {

@@ -20,6 +20,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   late final TextEditingController _age;
   late final TextEditingController _income;
   late final TextEditingController _rate;
+  late final TextEditingController _commute;
+  late final TextEditingController _workCosts;
   late Persona _persona;
   late IncomeType _type;
   late double _daysPerWeek;
@@ -50,6 +52,14 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         text: p.monthlyIncome > 0 ? p.monthlyIncome.toStringAsFixed(0) : '');
     _rate = TextEditingController(
         text: p.hourlyRate > 0 ? p.hourlyRate.toStringAsFixed(0) : '');
+    _commute = TextEditingController(
+        text: p.commuteMinutesPerDay > 0
+            ? p.commuteMinutesPerDay.toStringAsFixed(0)
+            : '');
+    _workCosts = TextEditingController(
+        text: p.workCostsPerMonth > 0
+            ? p.workCostsPerMonth.toStringAsFixed(0)
+            : '');
     _persona = p.persona;
     _type = p.incomeType;
     _daysPerWeek = p.workDaysPerWeek;
@@ -64,6 +74,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     _age.dispose();
     _income.dispose();
     _rate.dispose();
+    _commute.dispose();
+    _workCosts.dispose();
     super.dispose();
   }
 
@@ -79,6 +91,23 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
   bool get _valid => _isAllowance ? _monthly > 0 : _effectiveRate > 0;
 
+  double get _commuteMin => double.tryParse(_commute.text) ?? 0;
+  double get _workCostsM => double.tryParse(_workCosts.text) ?? 0;
+  bool get _hasDeductions => _commuteMin > 0 || _workCostsM > 0;
+
+  double get _grossMonthly => _type == IncomeType.hourly
+      ? _effectiveRate * _hoursPerDay * _daysPerWeek * 4.33
+      : _monthly;
+
+  double get _trueRate {
+    if (_effectiveRate <= 0) return 0;
+    if (!_hasDeductions) return _effectiveRate;
+    final hours = _daysPerWeek * 4.33 * (_hoursPerDay + _commuteMin / 60.0);
+    if (hours <= 0) return 0;
+    final net = _grossMonthly - _workCostsM;
+    return net <= 0 ? 0 : net / hours;
+  }
+
   void _save() {
     final p = ref.read(profileOrDefaultProvider);
     final next = p.copyWith(
@@ -92,6 +121,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       hoursPerDay: _hoursPerDay,
       workDayStartHour: _workDayStartHour,
       overtimePaid: _overtimePaid,
+      commuteMinutesPerDay: _commuteMin,
+      workCostsPerMonth: _workCostsM,
       onboarded: true,
     );
     ref.read(appActionsProvider).saveProfile(next);
@@ -201,6 +232,20 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               value: _overtimePaid,
               onChanged: (v) => setState(() => _overtimePaid = v),
             ),
+            const SizedBox(height: 8),
+            Text('Real wage (optional)', style: t.titleLarge),
+            const SizedBox(height: 4),
+            Text(
+              'Time and money you spend only because you work. We deduct these '
+              'to show what your hour is really worth.',
+              style: t.bodySmall?.copyWith(color: Colors.white60),
+            ),
+            const SizedBox(height: 12),
+            _moneyField(_commute, 'Commute minutes / day',
+                prefix: '', icon: Icons.directions_bus_outlined),
+            const SizedBox(height: 12),
+            _moneyField(_workCosts, 'Work-only costs / month (₹)',
+                icon: Icons.work_history_outlined),
           ],
           const SizedBox(height: 16),
           SectionCard(
@@ -216,6 +261,24 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       : '${fmt.format(_effectiveRate)} / hour',
                   style: t.displayLarge?.copyWith(color: AppColors.time),
                 ),
+                if (!_isAllowance && _hasDeductions && _trueRate > 0) ...[
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      const Icon(Icons.trending_down,
+                          size: 18, color: AppColors.warn),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'Real wage ${fmt.format(_trueRate)} / hour'
+                          '  ·  ${((_effectiveRate - _trueRate) / _effectiveRate * 100).round()}% less',
+                          style: t.bodyMedium
+                              ?.copyWith(color: AppColors.warn),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -229,12 +292,18 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     );
   }
 
-  Widget _moneyField(TextEditingController c, String label) => TextField(
+  Widget _moneyField(TextEditingController c, String label,
+          {String prefix = '₹ ', IconData? icon}) =>
+      TextField(
         controller: c,
         keyboardType: TextInputType.number,
         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         onChanged: (_) => setState(() {}),
-        decoration: InputDecoration(labelText: label, prefixText: '₹ '),
+        decoration: InputDecoration(
+          labelText: label,
+          prefixText: prefix.isEmpty ? null : prefix,
+          prefixIcon: icon == null ? null : Icon(icon),
+        ),
       );
 
   Widget _slider(String label, double value, double min, double max,

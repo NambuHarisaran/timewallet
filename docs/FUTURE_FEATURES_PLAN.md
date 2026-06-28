@@ -8,15 +8,13 @@ Feasibility tags reflect this dev machine's constraints: no Android SDK installe
 
 ## 1. Advanced Time Analytics (solving "blind spending")
 
-### 1.1 "Life Energy" ROI Matrix
+### 1.1 "Life Energy" ROI Matrix — ✅ SHIPPED (2026-06-28)
 Quadrant chart plotting expenses by **Time Cost (hours worked)** vs **Joy (mood)**. Mathematically surfaces **"Time Vampires"** = high hours worked + high regret.
-- **Feasibility:** BUILD NOW. `mood` (0-2) + per-expense work-time already stored. Render as pure-Dart quadrant scatter (NO fl_chart — Defender risk). Time Vampire = high-hours × high-regret cell.
-- **Effort:** low. Highest product fit in this list.
+- **Done:** `_LifeEnergyCard` + `_ScatterPainter` (pure-Dart CustomPaint, no fl_chart) in `insights_screen.dart`. x=work-time, y=joy(mood good/neutral/bad→1/.5/0); quadrant tints, crosshair, sized dots colored Time Vampire(warn)/Cheap joy(positive)/Worth it(money). "Your Time Vampires" list = bad-mood + above-median work-time, top 3, with work-time. Only shows when tracksTime + ≥3 timed purchases. GOTCHA: `intl` exports a `TextDirection` that shadows dart:ui's (no `.ltr`) → import `dart:ui as ui`, use `ui.TextDirection.ltr` in TextPainter. analyze clean, 36 tests.
 
-### 1.2 Subscription "Invisible Work" Analyzer
+### 1.2 Subscription "Invisible Work" Analyzer — ✅ SHIPPED (2026-06-28)
 Converts recurring subscriptions into a monthly **time tax**, e.g. "You work 3.5 days/month just to pay active subscriptions."
-- **Feasibility:** BUILD NOW. `monthlyRecurringCostProvider` exists → divide by daily rate = work-days. One label on existing Subscriptions card.
-- **Effort:** trivial.
+- **Done:** `_SubscriptionsCard` in `dashboard_screen.dart` retitled "INVISIBLE WORK", leads with work-days/month + work-days/year via `engine.daysFor()`, `_fmtDays` helper, InfoDot explainer. Falls back to ₹/year when not time-tracking. analyze clean.
 
 ## 2. Live Market Intelligence
 
@@ -27,22 +25,19 @@ Dedicated tab pulling real-time market/economic news via Finnhub API.
 
 ## 3. Financial Independence (FIRE) & Wealth Tracking
 
-### 3.1 Crossover Point Predictor
+### 3.1 Crossover Point Predictor — ✅ SHIPPED (2026-06-28)
 Tracks portfolio, predicts the exact date passive income overtakes expenses.
-- **Feasibility:** BUILD NOW. `monthsToFreedom` + portfolio + expenses already present. Add `passiveIncome = corpus × safeRate/12`, project date income > monthly expense. Pure, testable math.
-- **Effort:** low-medium.
+- **Done:** `Calculators.crossover` + `CrossoverResult` (months via `monthsToFreedom`, targetCorpus = expense×12/withdrawalRate, passiveMonthlyNow, `reached`/`coverPct`). `CrossoverScreen` in calculator_screens.dart — seeds corpus from `portfolioProvider.value` + expense from `monthSpendProvider`; shows crossover month/year + % of expenses covered today. Tools tile "Crossover point". `test/calculators_test.dart` +2 crossover tests. analyze clean.
 
-### 3.2 True Hourly Wage Calculator
+### 3.2 True Hourly Wage Calculator — ✅ SHIPPED (2026-06-28)
 Deducts commute time, taxes, work-related expenses to reveal real hourly rate.
-- **Feasibility:** BUILD NOW. Extends `effectiveHourlyRate` — subtract commute mins + work expenses. New profile fields + one calc.
-- **Effort:** low.
+- **Done:** `UserProfile.commuteMinutesPerDay` + `workCostsPerMonth` fields (copyWith/toJson/fromJson). Getters `trueHourlyRate` (counts commute as work hours, strips work costs from monthlyMoney), `hasTrueWageInputs`, `trueWageDropPct`. Inputs in `edit_profile_screen.dart` ("Real wage (optional)" section) with live stated-vs-real preview. Profile GradientCard shows "Real ₹X/hr · N% less" pill when set. Onboarding left lean (no first-run friction). `test/true_wage_test.dart` (4 tests). analyze clean.
 
 ## 4. Gamification & Automation
 
-### 4.1 Time Reclaimed Achievements
+### 4.1 Time Reclaimed Achievements — ✅ SHIPPED (2026-06-28)
 Badges + streaks for using "Worth It?" to skip impulse purchases.
-- **Feasibility:** BUILD NOW. `reclaimedMinutesProvider` + `skipPurchase` already exist. Badges = pure UI on existing data.
-- **Effort:** low.
+- **Done:** `lib/features/reclaimed/achievements_screen.dart` — 6 work-day-threshold badges (First Win/Half a Day/Full Day/Long Weekend/Week/Month) unlocked from `reclaimedMinutesProvider` ÷ work-day; skip count from `activityProvider` (expenseSkipped). GradientCard header (total reclaimed + skips + badge count), next-tier progress bar, 2-col badge grid (locked = greyed + lock). Linked from Profile "Achievements" tile + dashboard `_ReclaimedCard` now tappable. analyze clean.
 
 ### 4.2 Smart Receipt Scanner (OCR)
 Snap receipt → parse total + auto-categorize.
@@ -57,13 +52,15 @@ Daily time-budget + progress at a glance.
 
 ## Build order when resumed
 
-**Batch A — build now (~1 day, no new fragile deps):**
-1. Subscription Invisible Work (trivial, existing card)
-2. Life Energy ROI Matrix (highest fit)
-3. Time Reclaimed Achievements
-4. True Hourly Wage Calculator
-5. Crossover Point Predictor
-6. Live News Feed
+**Batch A — ✅ ALL SHIPPED (2026-06-28), no new deps, web-safe:**
+1. ✅ Subscription Invisible Work
+2. ✅ Life Energy ROI Matrix
+3. ✅ Time Reclaimed Achievements
+4. ✅ True Hourly Wage Calculator
+5. ✅ Crossover Point Predictor
+6. Live News Feed — DROPPED (weak money=time fit + CORS risk on web)
+
+All analyze-clean, 38 tests green. Unverified on device (no Android SDK here) — card/scatter/grid layouts want an eyeball on a real run.
 
 **Batch B — blocked until Android SDK + Defender exclusion + device:**
 - OCR Receipt Scanner

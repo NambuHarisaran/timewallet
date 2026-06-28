@@ -6,9 +6,11 @@ import 'package:intl/intl.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/time/duration_format.dart';
+import '../../core/util/engagement.dart';
 import '../../data/models/expense.dart';
 import '../../state/app_providers.dart';
 import '../../widgets/celebrate.dart';
+import '../../widgets/first_time_tip.dart';
 import '../../widgets/gradient_card.dart';
 import '../../widgets/gradient_text.dart';
 import '../../widgets/info_dot.dart';
@@ -19,16 +21,35 @@ import '../../widgets/section_card.dart';
 import '../expense/add_expense_screen.dart';
 import '../expense/expenses_screen.dart';
 import '../insights/insights_screen.dart';
+import '../reclaimed/achievements_screen.dart';
 import '../recurring/recurring_screen.dart';
 import '../share/share_card_screen.dart';
 import '../tools/calculator_screens.dart';
 import '../walkthrough/walkthrough_screen.dart';
+import '../wrapped/wrapped_screen.dart';
 
 class DashboardScreen extends ConsumerWidget {
-  const DashboardScreen({super.key});
+  /// Switches the HomeShell tab (0 Home, 1 Goals, 2 Invest, 3 Tools, 4 Profile).
+  /// Used by the GROW section to send users deeper into the app.
+  final void Function(int index)? onTab;
+  const DashboardScreen({super.key, this.onTab});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Variable reward: celebrate when logging work crosses a streak milestone.
+    // prev >= 1 guards against the cold-start jump from 0 during stream hydration.
+    ref.listen<int>(streakProvider, (prev, next) {
+      if (prev == null || prev < 1) return;
+      final milestone = streakMilestoneCrossed(prev, next);
+      if (milestone == null) return;
+      celebrate(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$milestone-day streak! You\'re building the habit.'),
+        ),
+      );
+    });
+
     final t = Theme.of(context).textTheme;
     final profile = ref.watch(profileOrDefaultProvider);
     final workedMin = ref.watch(workedTodayProvider);
@@ -68,6 +89,12 @@ class DashboardScreen extends ConsumerWidget {
 
               // First-run guidance: teaches the core loop, self-dismisses.
               _StartHereCard(onLogWork: () => _logWorkSheet(context, ref)),
+
+              // Once-a-month nudge to view the previous month's Wrapped recap.
+              const _WrappedPromptCard(),
+
+              // ---- EARN ----
+              const _SpineHeader('EARN', 'turn time into money'),
 
               // Hero: earnings (time mode) OR budget (allowance mode)
               if (tracksTime)
@@ -216,7 +243,20 @@ class DashboardScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
+              // First-time explainer the moment overtime appears.
+              if (tracksTime && work.overtime > 0)
+                const FirstTimeTip(
+                  id: 'overtime',
+                  icon: Icons.bolt_outlined,
+                  title: 'That was overtime',
+                  body:
+                      'Hours past your daily target count as overtime. They earn extra only if you set overtime as paid in your profile.',
+                ),
+
               const SizedBox(height: 16),
+
+              // ---- SPEND ----
+              const _SpineHeader('SPEND', 'see cost as life-hours'),
 
               // Spend today — as time or as budget % (tap → full ledger)
               InkWell(
@@ -249,21 +289,20 @@ class DashboardScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 16),
 
+              // Subscriptions, category budgets, held wants
+              _SubscriptionsCard(),
+              _BudgetsCard(),
+              _HeldList(),
+
+              // ---- DECIDE ----
+              const _SpineHeader('DECIDE', 'spend or reclaim?'),
+
               // Quick: check any price in work-time
               const _QuickCheckCard(),
               const SizedBox(height: 16),
 
-              // Held wants
-              _HeldList(),
-
               // Time reclaimed by skipping wants
               _ReclaimedCard(),
-
-              // Subscriptions burden
-              _SubscriptionsCard(),
-
-              // Category budgets
-              _BudgetsCard(),
 
               // Insight
               SectionCard(
@@ -283,6 +322,11 @@ class DashboardScreen extends ConsumerWidget {
                   ],
                 ),
               ),
+              const SizedBox(height: 16),
+
+              // ---- GROW ----
+              const _SpineHeader('GROW', 'buy back your future'),
+              _GrowCard(onTab: onTab),
               const SizedBox(height: 16),
 
               OutlinedButton.icon(
@@ -523,6 +567,209 @@ class _QuickCheckCard extends StatelessWidget {
   }
 }
 
+/// Once-a-month re-engagement nudge: surfaces the previous month's Wrapped
+/// recap. Shows at most once per calendar month and only for users with data.
+class _WrappedPromptCard extends ConsumerStatefulWidget {
+  const _WrappedPromptCard();
+  @override
+  ConsumerState<_WrappedPromptCard> createState() => _WrappedPromptCardState();
+}
+
+class _WrappedPromptCardState extends ConsumerState<_WrappedPromptCard> {
+  static const _key = 'wrapped_prompted_month';
+  late bool _due;
+
+  @override
+  void initState() {
+    super.initState();
+    final last = ref.read(sharedPrefsProvider).getString(_key);
+    _due = wrappedPromptDue(last, DateTime.now());
+  }
+
+  void _markSeen() {
+    ref.read(sharedPrefsProvider).setString(_key, monthKey(DateTime.now()));
+    if (mounted) setState(() => _due = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_due) return const SizedBox.shrink();
+    final hasData =
+        (ref.watch(expensesProvider).asData?.value ?? const []).isNotEmpty ||
+            (ref.watch(workedProvider).asData?.value ?? const {}).isNotEmpty;
+    if (!hasData) return const SizedBox.shrink();
+
+    final t = Theme.of(context).textTheme;
+    final now = DateTime.now();
+    final prev = DateTime(now.year, now.month - 1, 1);
+    final monthName = DateFormat('MMMM').format(prev);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: GradientCard(
+        colors: AppColors.auroraViolet,
+        child: Row(
+          children: [
+            const Icon(Icons.auto_awesome, color: Colors.white, size: 28),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Your $monthName Wrapped is ready',
+                      style: t.titleMedium?.copyWith(
+                          color: Colors.white, fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 2),
+                  Text('See where your money and time went.',
+                      style: t.bodySmall?.copyWith(color: Colors.white70)),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.white.withValues(alpha: 0.22),
+                          foregroundColor: Colors.white,
+                          visualDensity: VisualDensity.compact,
+                          // The global theme makes FilledButton full-width
+                          // (infinite min width); that explodes inside a Row.
+                          minimumSize: const Size(0, 38),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        onPressed: () {
+                          _markSeen();
+                          Navigator.of(context).push(MaterialPageRoute(
+                              builder: (_) => const WrappedScreen()));
+                        },
+                        child: const Text('See it'),
+                      ),
+                      TextButton(
+                        style: TextButton.styleFrom(
+                            foregroundColor: Colors.white70),
+                        onPressed: _markSeen,
+                        child: const Text('Later'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Verb header that narrates the EARN→SPEND→DECIDE→GROW spine as the user
+/// scrolls — so they build one mental map of the whole app.
+class _SpineHeader extends StatelessWidget {
+  final String verb;
+  final String subtitle;
+  const _SpineHeader(this.verb, this.subtitle);
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(2, 10, 2, 12),
+      child: Row(
+        children: [
+          Text(verb,
+              style: t.titleSmall?.copyWith(
+                fontWeight: FontWeight.w800,
+                color: AppColors.accent,
+                letterSpacing: 1.5,
+              )),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: t.bodySmall?.copyWith(color: AppColors.darkMuted)),
+          ),
+          const SizedBox(width: 12),
+          Expanded(child: Container(height: 1, color: AppColors.darkBorder)),
+        ],
+      ),
+    );
+  }
+}
+
+/// GROW entry — sends users from the home loop into Goals / Invest / Tools.
+class _GrowCard extends StatelessWidget {
+  final void Function(int index)? onTab;
+  const _GrowCard({this.onTab});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Put your hours to work', style: t.titleLarge),
+          const SizedBox(height: 2),
+          Text('Set goals, invest, and plan your freedom.',
+              style: t.bodyMedium),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              _GrowChip(
+                  icon: Icons.flag_rounded,
+                  label: 'Goals',
+                  onTap: () => onTab?.call(1)),
+              const SizedBox(width: 10),
+              _GrowChip(
+                  icon: Icons.pie_chart_rounded,
+                  label: 'Invest',
+                  onTap: () => onTab?.call(2)),
+              const SizedBox(width: 10),
+              _GrowChip(
+                  icon: Icons.calculate_rounded,
+                  label: 'Tools',
+                  onTap: () => onTab?.call(3)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GrowChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  const _GrowChip(
+      {required this.icon, required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return Expanded(
+      child: Pressable(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            color: AppColors.accent.withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            children: [
+              Icon(icon, color: AppColors.accent),
+              const SizedBox(height: 6),
+              Text(label,
+                  style:
+                      t.labelMedium?.copyWith(fontWeight: FontWeight.w600)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// First-run "Start here" checklist. Teaches the core loop by doing, then
 /// disappears once the user has logged work (time-mode) and added an expense.
 class _StartHereCard extends ConsumerWidget {
@@ -581,7 +828,7 @@ class _StartHereCard extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'GETTING STARTED',
+                        'START HERE',
                         style: t.labelSmall?.copyWith(
                           color: AppColors.accent,
                           fontWeight: FontWeight.w800,
@@ -590,7 +837,7 @@ class _StartHereCard extends ConsumerWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Complete onboarding tasks',
+                        'A few steps to feel the magic',
                         style: t.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
@@ -762,6 +1009,17 @@ class _StepTile extends StatelessWidget {
   }
 }
 
+/// Formats work-days for the invisible-work framing: "3.5 work-days".
+String _fmtDays(double days) {
+  if (days <= 0) return '0 work-days';
+  final rounded = days >= 10 ? days.roundToDouble() : (days * 10).round() / 10;
+  final label = rounded == 1 ? 'work-day' : 'work-days';
+  final num = rounded == rounded.roundToDouble()
+      ? rounded.toStringAsFixed(0)
+      : rounded.toStringAsFixed(1);
+  return '$num $label';
+}
+
 /// Subscriptions burden as work-time (only shows once some exist).
 class _SubscriptionsCard extends ConsumerWidget {
   @override
@@ -772,8 +1030,11 @@ class _SubscriptionsCard extends ConsumerWidget {
     final profile = ref.watch(profileOrDefaultProvider);
     final t = Theme.of(context).textTheme;
     final fmt = NumberFormat.currency(symbol: '₹', decimalDigits: 0);
-    final line = profile.tracksTime && monthly > 0
-        ? '= ${TimeFormat.longForm(profile.engine.minutesFor(monthly), hoursPerDay: profile.hoursPerDay)} of work / month'
+    final tracks = profile.tracksTime && monthly > 0;
+    final monthDays = profile.engine.daysFor(monthly);
+    final yearDays = profile.engine.daysFor(monthly * 12);
+    final line = tracks
+        ? 'You work ${_fmtDays(monthDays)} a month — ${_fmtDays(yearDays)} a year — just to keep these.'
         : '${fmt.format(monthly * 12)} per year';
 
     return Padding(
@@ -784,8 +1045,19 @@ class _SubscriptionsCard extends ConsumerWidget {
           MaterialPageRoute(builder: (_) => const RecurringScreen()),
         ),
         child: SectionCard(
-          title: 'SUBSCRIPTIONS',
-          trailing: const Icon(Icons.chevron_right, size: 20),
+          title: 'INVISIBLE WORK',
+          trailing: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              InfoDot(
+                title: 'Invisible work',
+                body:
+                    'The work-time your active subscriptions quietly cost you every month and year. Money leaves automatically, so the hours behind it stay invisible — until now.',
+              ),
+              SizedBox(width: 4),
+              Icon(Icons.chevron_right, size: 20),
+            ],
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -812,24 +1084,32 @@ class _ReclaimedCard extends ConsumerWidget {
     final t = Theme.of(context).textTheme;
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
-      child: SectionCard(
-        child: Row(
-          children: [
-            const Icon(Icons.celebration_outlined,
-                size: 24, color: AppColors.positive),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                "You've reclaimed ${TimeFormat.longForm(reclaimed, hoursPerDay: profile.hoursPerDay)} of your life by skipping wants.",
-                style: t.bodyLarge,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(24),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const AchievementsScreen()),
+        ),
+        child: SectionCard(
+          child: Row(
+            children: [
+              const Icon(Icons.celebration_outlined,
+                  size: 24, color: AppColors.positive),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  "You've reclaimed ${TimeFormat.longForm(reclaimed, hoursPerDay: profile.hoursPerDay)} of your life by skipping wants.",
+                  style: t.bodyLarge,
+                ),
               ),
-            ),
-            const InfoDot(
-              title: 'Reclaimed time',
-              body:
-                  'The total work-time you saved by skipping wants you had on hold. Proof of the life you bought back.',
-            ),
-          ],
+              const InfoDot(
+                title: 'Reclaimed time',
+                body:
+                    'The total work-time you saved by skipping wants you had on hold. Proof of the life you bought back.',
+              ),
+              const SizedBox(width: 4),
+              const Icon(Icons.chevron_right, size: 20),
+            ],
+          ),
         ),
       ),
     );
@@ -923,7 +1203,15 @@ class _HeldList extends ConsumerWidget {
               'Wants you paused before buying. After 24 hours, decide with a clear head: Buy it, or Skip and reclaim that work-time.',
         ),
         child: Column(
-          children: held.map((e) {
+          children: [
+          const FirstTimeTip(
+            id: 'hold',
+            icon: Icons.pause_circle_outline,
+            title: 'You put a want on hold',
+            body:
+                'Give it 24 hours. Then Skip to reclaim that work-time, or Buy with a clear head. Beating the impulse is the win.',
+          ),
+          ...held.map((e) {
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 6),
               child: Row(
@@ -970,7 +1258,8 @@ class _HeldList extends ConsumerWidget {
                 ],
               ),
             );
-          }).toList(),
+          }),
+          ],
         ),
       ),
     );

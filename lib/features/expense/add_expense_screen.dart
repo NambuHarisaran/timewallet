@@ -6,6 +6,8 @@ import '../../core/theme/app_colors.dart';
 import '../../core/time/duration_format.dart';
 import '../../data/models/expense.dart';
 import '../../state/app_providers.dart';
+import '../../widgets/celebrate.dart';
+import '../../widgets/first_time_tip.dart';
 
 class AddExpenseScreen extends ConsumerStatefulWidget {
   const AddExpenseScreen({super.key});
@@ -33,6 +35,11 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   void _commit({required bool hold}) {
     final profile = ref.read(profileOrDefaultProvider);
     final minutes = profile.engine.minutesFor(_value);
+
+    // First-ever logged spend is the activation moment — make it land.
+    final isFirstSpend =
+        (ref.read(expensesProvider).asData?.value ?? const []).isEmpty;
+
     ref.read(appActionsProvider).addExpense(
           amount: _value,
           categoryId: _categoryId,
@@ -43,7 +50,30 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
           note: _note.text,
         );
     HapticFeedback.mediumImpact();
-    Navigator.of(context).pop(hold);
+
+    // Capture the app-level messenger/navigator before popping. ScaffoldMessenger
+    // is provided by MaterialApp (above the Navigator), so it outlives this route.
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+
+    if (isFirstSpend && !hold) {
+      // Confetti goes into the root overlay, so it keeps playing over the
+      // dashboard after this screen pops. Fire it while context is still valid.
+      celebrate(context);
+    }
+
+    navigator.pop(hold);
+
+    if (isFirstSpend && !hold) {
+      final reframe = profile.tracksTime
+          ? "That's ${TimeFormat.longForm(minutes, hoursPerDay: profile.hoursPerDay)} of your life — your first spend, in hours."
+          : profile.monthlyMoney > 0
+              ? "That's ${(_value / profile.monthlyMoney * 100).toStringAsFixed(1)}% of your month — your first spend, logged."
+              : 'Your first spend, logged.';
+      messenger.showSnackBar(
+        SnackBar(content: Text(reframe), duration: const Duration(seconds: 4)),
+      );
+    }
   }
 
   @override
@@ -119,6 +149,13 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             ],
           ),
           const SizedBox(height: 20),
+          const FirstTimeTip(
+            id: 'needwant',
+            icon: Icons.balance,
+            title: 'Need or Want?',
+            body:
+                'Tag honestly. Wants can be put on a 24h hold so you decide with a clear head — and reclaim the work-time if you skip.',
+          ),
           SegmentedButton<NeedWant>(
             segments: const [
               ButtonSegment(value: NeedWant.need, label: Text('Need')),

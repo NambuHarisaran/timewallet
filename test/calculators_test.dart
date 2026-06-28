@@ -10,6 +10,33 @@ void main() {
     expect(r.returns, closeTo(r.futureValue - r.invested, 1));
   });
 
+  test('crossover: already-free when passive income covers expenses', () {
+    // ₹1cr corpus at 4% = ₹4L/yr = ₹33,333/mo > ₹30k expense.
+    final r = Calculators.crossover(
+      currentCorpus: 10000000,
+      monthlyInvest: 0,
+      annualReturnPct: 12,
+      monthlyExpense: 30000,
+    );
+    expect(r.reached, isTrue);
+    expect(r.months, 0);
+    expect(r.passiveMonthlyNow, closeTo(33333, 1));
+    expect(r.coverPct, 1.0);
+  });
+
+  test('crossover: target corpus is 25x annual expense at 4%', () {
+    final r = Calculators.crossover(
+      currentCorpus: 0,
+      monthlyInvest: 20000,
+      annualReturnPct: 12,
+      monthlyExpense: 30000,
+    );
+    expect(r.targetCorpus, closeTo(30000 * 12 * 25, 1)); // 9,000,000
+    expect(r.reached, isFalse);
+    expect(r.months, greaterThan(0));
+    expect(r.coverPct, 0.0);
+  });
+
   test('SIP with 0% return is just contributions', () {
     final r = Calculators.sip(monthly: 1000, annualRatePct: 0, years: 2);
     expect(r.futureValue, closeTo(24000, 0.01));

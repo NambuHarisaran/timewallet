@@ -127,6 +127,34 @@ class Calculators {
     return m;
   }
 
+  /// Crossover point: when passive income (corpus × safe-withdrawal rate)
+  /// overtakes monthly expenses. Returns months to get there, the target
+  /// corpus, and the passive income today's corpus already throws off.
+  static CrossoverResult crossover({
+    required double currentCorpus,
+    required double monthlyInvest,
+    required double annualReturnPct,
+    required double monthlyExpense,
+    double withdrawalRatePct = 4,
+  }) {
+    final w = withdrawalRatePct / 100;
+    final target = w <= 0 ? double.infinity : monthlyExpense * 12 / w;
+    final months = target.isFinite
+        ? monthsToFreedom(
+            savings: currentCorpus,
+            monthlyInvest: monthlyInvest,
+            annualRatePct: annualReturnPct,
+            targetCorpus: target,
+          )
+        : 1200;
+    return CrossoverResult(
+      months: months,
+      targetCorpus: target,
+      passiveMonthlyNow: currentCorpus * w / 12,
+      monthlyExpense: monthlyExpense,
+    );
+  }
+
   /// EMI for a loan. Returns monthly payment, total payable, total interest.
   static EmiResult emi({
     required double principal,
@@ -188,4 +216,25 @@ class RetireResult {
   final double corpus;
   final double futureMonthly;
   const RetireResult({required this.corpus, required this.futureMonthly});
+}
+
+class CrossoverResult {
+  final int months;
+  final double targetCorpus;
+  final double passiveMonthlyNow;
+  final double monthlyExpense;
+  const CrossoverResult({
+    required this.months,
+    required this.targetCorpus,
+    required this.passiveMonthlyNow,
+    required this.monthlyExpense,
+  });
+
+  /// Passive income already covers expenses — crossover reached.
+  bool get reached => monthlyExpense > 0 && passiveMonthlyNow >= monthlyExpense;
+
+  /// Fraction of monthly expenses covered by passive income today (0..1).
+  double get coverPct => monthlyExpense <= 0
+      ? 0
+      : (passiveMonthlyNow / monthlyExpense).clamp(0.0, 1.0).toDouble();
 }

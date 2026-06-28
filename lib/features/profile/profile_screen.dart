@@ -14,6 +14,7 @@ import '../budgets/budgets_screen.dart';
 import '../expense/expenses_screen.dart';
 import '../history/history_screen.dart';
 import '../insights/insights_screen.dart';
+import '../reclaimed/achievements_screen.dart';
 import '../recurring/recurring_screen.dart';
 import '../help/glossary_screen.dart';
 import '../salary/salary_setup_screen.dart';
@@ -120,6 +121,32 @@ class ProfileScreen extends ConsumerWidget {
                       : 'Pocket-money mode — spending tracked against budget',
                   style: t.bodyMedium?.copyWith(color: Colors.white70),
                 ),
+                if (profile.tracksTime && profile.hasTrueWageInputs) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.trending_down,
+                            size: 16, color: Colors.white),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Real ${fmt.format(profile.trueHourlyRate)}/hr · '
+                          '${(profile.trueWageDropPct * 100).round()}% less',
+                          style: t.bodyMedium?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -162,6 +189,16 @@ class ProfileScreen extends ConsumerWidget {
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.of(context).push(MaterialPageRoute(
                       builder: (_) => const GlossaryScreen())),
+                ),
+                const Divider(),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.emoji_events_outlined),
+                  title: const Text('Achievements'),
+                  subtitle: const Text('Life reclaimed by skipping wants'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => const AchievementsScreen())),
                 ),
                 const Divider(),
                 ListTile(

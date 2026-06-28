@@ -44,13 +44,16 @@ class NotificationService {
     return a ?? i ?? true;
   }
 
-  Future<void> enableDailyReminder() async {
+  /// Schedules the repeating daily reminder. [body] lets the caller pass a
+  /// context-aware message (streak, subscriptions) so the nudge feels personal;
+  /// falls back to a benefit-framed default.
+  Future<void> enableDailyReminder({String? body}) async {
     if (kIsWeb) return;
     await _init();
     await _plugin.periodicallyShow(
       _dailyId,
       'TimeWallet',
-      "Log today's work & spending — see your money as time.",
+      body ?? "Log today's work & spending — see your money as time.",
       RepeatInterval.daily,
       _details,
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,

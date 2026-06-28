@@ -25,6 +25,13 @@ class UserProfile {
   /// Whether hours worked beyond [hoursPerDay] are paid (overtime).
   final bool overtimePaid;
 
+  /// Unpaid minutes spent commuting per work-day (counts against real wage).
+  final double commuteMinutesPerDay;
+
+  /// Monthly money spent only because you work (lunch out, fuel, clothes,
+  /// equipment). Deducted to reveal the true hourly wage.
+  final double workCostsPerMonth;
+
   const UserProfile({
     this.name = '',
     this.age = 0,
@@ -38,6 +45,8 @@ class UserProfile {
     this.currencySymbol = '₹',
     this.workDayStartHour = 0,
     this.overtimePaid = true,
+    this.commuteMinutesPerDay = 0,
+    this.workCostsPerMonth = 0,
   });
 
   bool get isNightShift => workDayStartHour != 0;
@@ -63,6 +72,32 @@ class UserProfile {
 
   /// When true the app shows spending as work-time; otherwise as budget %.
   bool get tracksTime => effectiveHourlyRate > 0;
+
+  /// True the user entered any commute or work-cost deduction.
+  bool get hasTrueWageInputs =>
+      commuteMinutesPerDay > 0 || workCostsPerMonth > 0;
+
+  /// Real hourly wage after subtracting commute time and work-only costs.
+  /// Counts commute hours as part of the work-day and strips work expenses
+  /// from monthly income. Falls back to [effectiveHourlyRate] when no
+  /// deductions are set.
+  double get trueHourlyRate {
+    if (!tracksTime) return 0;
+    if (!hasTrueWageInputs) return effectiveHourlyRate;
+    final committedHours =
+        workDaysPerWeek * 4.33 * (hoursPerDay + commuteMinutesPerDay / 60.0);
+    if (committedHours <= 0) return 0;
+    final net = monthlyMoney - workCostsPerMonth;
+    if (net <= 0) return 0;
+    return net / committedHours;
+  }
+
+  /// How much lower the real wage is than the stated one, as a fraction 0..1.
+  double get trueWageDropPct {
+    final stated = effectiveHourlyRate;
+    if (stated <= 0) return 0;
+    return ((stated - trueHourlyRate) / stated).clamp(0.0, 1.0).toDouble();
+  }
 
   TimeEngine get engine => TimeEngine(
         effectiveHourlyRate: effectiveHourlyRate,
@@ -94,6 +129,8 @@ class UserProfile {
     String? currencySymbol,
     int? workDayStartHour,
     bool? overtimePaid,
+    double? commuteMinutesPerDay,
+    double? workCostsPerMonth,
   }) {
     return UserProfile(
       name: name ?? this.name,
@@ -108,6 +145,8 @@ class UserProfile {
       currencySymbol: currencySymbol ?? this.currencySymbol,
       workDayStartHour: workDayStartHour ?? this.workDayStartHour,
       overtimePaid: overtimePaid ?? this.overtimePaid,
+      commuteMinutesPerDay: commuteMinutesPerDay ?? this.commuteMinutesPerDay,
+      workCostsPerMonth: workCostsPerMonth ?? this.workCostsPerMonth,
     );
   }
 
@@ -124,6 +163,8 @@ class UserProfile {
         'currencySymbol': currencySymbol,
         'workDayStartHour': workDayStartHour,
         'overtimePaid': overtimePaid,
+        'commuteMinutesPerDay': commuteMinutesPerDay,
+        'workCostsPerMonth': workCostsPerMonth,
       };
 
   factory UserProfile.fromJson(Map<String, dynamic> j) => UserProfile(
@@ -140,5 +181,7 @@ class UserProfile {
         currencySymbol: safeString(j['currencySymbol'], '₹'),
         workDayStartHour: safeInt(j['workDayStartHour']),
         overtimePaid: j['overtimePaid'] != false,
+        commuteMinutesPerDay: safeDouble(j['commuteMinutesPerDay']),
+        workCostsPerMonth: safeDouble(j['workCostsPerMonth']),
       );
 }
