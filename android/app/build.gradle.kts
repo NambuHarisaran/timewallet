@@ -38,7 +38,8 @@ android {
 
     defaultConfig {
         applicationId = "in.no1ads.timewallet"
-        minSdk = flutter.minSdkVersion
+        // ML Kit text recognition needs API 21+; never drop below it.
+        minSdk = maxOf(flutter.minSdkVersion, 21)
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

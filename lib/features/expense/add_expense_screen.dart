@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/time/duration_format.dart';
 import '../../data/models/expense.dart';
+import '../../services/receipt_scanner.dart';
 import '../../state/app_providers.dart';
 import '../../widgets/celebrate.dart';
 import '../../widgets/first_time_tip.dart';
@@ -22,6 +24,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   String _categoryId = 'food';
   Mood _mood = Mood.neutral;
   NeedWant _needWant = NeedWant.need;
+  bool _scanning = false;
 
   @override
   void dispose() {
@@ -31,6 +34,56 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   }
 
   double get _value => double.tryParse(_amount.text) ?? 0;
+
+  /// Snap or pick a receipt → on-device OCR → prefill the amount for review.
+  /// We never auto-save; the user always confirms the guessed total.
+  Future<void> _scanReceipt() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('Take a photo'),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Pick from gallery'),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null || !mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final file =
+          await ImagePicker().pickImage(source: source, imageQuality: 85);
+      if (file == null) return;
+      setState(() => _scanning = true);
+      final scan = await ReceiptScanner().scan(file.path);
+      if (!mounted) return;
+      if (scan.amount != null) {
+        _amount.text = scan.amount!.round().toString();
+        messenger.showSnackBar(SnackBar(
+            content: Text('Found ₹${scan.amount!.round()} — check it’s right')));
+      } else {
+        messenger.showSnackBar(const SnackBar(
+            content: Text('Couldn’t read a total — type it in')));
+      }
+    } catch (_) {
+      messenger.showSnackBar(
+          const SnackBar(content: Text('Scan failed — try again or type it in')));
+    } finally {
+      if (mounted) setState(() => _scanning = false);
+    }
+  }
 
   void _commit({required bool hold}) {
     final profile = ref.read(profileOrDefaultProvider);
@@ -84,7 +137,22 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     final isWant = _needWant == NeedWant.want;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Add expense')),
+      appBar: AppBar(
+        title: const Text('Add expense'),
+        actions: [
+          IconButton(
+            tooltip: 'Scan receipt',
+            onPressed: _scanning ? null : _scanReceipt,
+            icon: _scanning
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.document_scanner_outlined),
+          ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

@@ -146,7 +146,8 @@ class _WorthQuizState extends ConsumerState<WorthQuizScreen> {
             )
           : null,
       body: ResponsiveBody(
-        child: ListView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text('Price', style: t.labelSmall),
             TextField(

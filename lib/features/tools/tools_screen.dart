@@ -5,7 +5,8 @@ import '../../core/theme/app_colors.dart';
 import '../../state/app_providers.dart';
 import '../../widgets/responsive_body.dart';
 import '../../widgets/section_card.dart';
-import '../worth/worth_it_screen.dart';
+import '../future_you/future_you_screen.dart';
+import '../worth/worth_quiz_screen.dart';
 import 'calculator_screens.dart';
 
 class _Tool {
@@ -47,8 +48,11 @@ class _ToolsScreenState extends ConsumerState<ToolsScreen> {
     // Starter set — the three that make the core idea click.
     _Tool(Icons.hourglass_bottom, 'Money → time', 'See any amount as work-time',
         AppColors.time, () => const TimeValueScreen()),
-    _Tool(Icons.help_outline, 'Worth it?', 'Decide before you buy',
-        AppColors.time, () => const WorthItScreen()),
+    _Tool(Icons.help_outline, 'Worth it?', 'Answer 5 questions, get a verdict',
+        AppColors.time, () => const WorthQuizScreen()),
+    _Tool(Icons.auto_awesome, 'Future You',
+        'Turn a habit into years of life', AppColors.positive,
+        () => const FutureYouScreen()),
     _Tool(Icons.beach_access_outlined, 'Financial freedom',
         'When can you stop working?', AppColors.positive,
         () => const FinancialFreedomScreen()),
