@@ -2,7 +2,6 @@ import '../models/activity.dart';
 import '../models/category_budget.dart';
 import '../models/expense.dart';
 import '../models/goal.dart';
-import '../models/holding.dart';
 import '../models/recurring_expense.dart';
 import '../models/user_profile.dart';
 
@@ -19,10 +18,6 @@ abstract class DataBackend {
   Stream<List<Goal>> watchGoals();
   Future<void> upsertGoal(Goal g);
   Future<void> deleteGoal(String id);
-
-  Stream<List<Holding>> watchHoldings();
-  Future<void> upsertHolding(Holding h);
-  Future<void> deleteHolding(String id);
 
   Stream<List<ActivityLog>> watchActivity();
   Future<void> addActivity(ActivityLog log);
@@ -44,8 +39,8 @@ abstract class DataBackend {
   Stream<Map<String, double>> watchStats();
   Future<void> addReclaimedMinutes(double minutes);
 
-  /// Wipes every document under the user (expenses, goals, holdings, activity,
-  /// state, profile). Used by the "delete account" flow.
+  /// Wipes every document under the user (expenses, goals, activity, state,
+  /// profile). Used by the "delete account" flow.
   Future<void> wipeAllData();
 }
 
@@ -71,13 +66,6 @@ class EmptyBackend implements DataBackend {
   Future<void> upsertGoal(Goal g) async {}
   @override
   Future<void> deleteGoal(String id) async {}
-
-  @override
-  Stream<List<Holding>> watchHoldings() => Stream.value(const []);
-  @override
-  Future<void> upsertHolding(Holding h) async {}
-  @override
-  Future<void> deleteHolding(String id) async {}
 
   @override
   Stream<List<ActivityLog>> watchActivity() => Stream.value(const []);

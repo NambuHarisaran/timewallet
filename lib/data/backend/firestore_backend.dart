@@ -5,7 +5,6 @@ import '../models/activity.dart';
 import '../models/category_budget.dart';
 import '../models/expense.dart';
 import '../models/goal.dart';
-import '../models/holding.dart';
 import '../models/recurring_expense.dart';
 import '../models/user_profile.dart';
 import 'data_backend.dart';
@@ -14,7 +13,6 @@ import 'data_backend.dart';
 ///   users/{uid}                         -> profile fields
 ///   users/{uid}/expenses/{id}           -> expense docs
 ///   users/{uid}/goals/{id}              -> goal docs
-///   users/{uid}/holdings/{id}           -> investment holding docs
 ///   users/{uid}/activity/{id}           -> activity log docs
 ///   users/{uid}/state/worked            -> { 'YYYY-M-D': minutes }
 class FirestoreBackend implements DataBackend {
@@ -29,8 +27,6 @@ class FirestoreBackend implements DataBackend {
       _userDoc.collection('expenses');
   CollectionReference<Map<String, dynamic>> get _goals =>
       _userDoc.collection('goals');
-  CollectionReference<Map<String, dynamic>> get _holdings =>
-      _userDoc.collection('holdings');
   CollectionReference<Map<String, dynamic>> get _activity =>
       _userDoc.collection('activity');
   CollectionReference<Map<String, dynamic>> get _budgets =>
@@ -107,22 +103,6 @@ class FirestoreBackend implements DataBackend {
 
   @override
   Future<void> deleteGoal(String id) => _goals.doc(id).delete();
-
-  // ---- Holdings ----
-  @override
-  Stream<List<Holding>> watchHoldings() {
-    return _holdings
-        .orderBy('buyDate', descending: true)
-        .snapshots()
-        .map((q) => _parse(q, Holding.fromJson));
-  }
-
-  @override
-  Future<void> upsertHolding(Holding h) =>
-      _holdings.doc(h.id).set(h.toJson(), SetOptions(merge: true));
-
-  @override
-  Future<void> deleteHolding(String id) => _holdings.doc(id).delete();
 
   // ---- Activity log ----
   @override
@@ -216,7 +196,6 @@ class FirestoreBackend implements DataBackend {
   Future<void> wipeAllData() async {
     await _deleteCollection(_expenses);
     await _deleteCollection(_goals);
-    await _deleteCollection(_holdings);
     await _deleteCollection(_activity);
     await _deleteCollection(_budgets);
     await _deleteCollection(_recurring);

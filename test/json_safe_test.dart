@@ -3,16 +3,15 @@ import 'package:timewallet/core/util/json_safe.dart';
 import 'package:timewallet/data/models/activity.dart';
 import 'package:timewallet/data/models/expense.dart';
 import 'package:timewallet/data/models/goal.dart';
-import 'package:timewallet/data/models/holding.dart';
 import 'package:timewallet/data/models/user_profile.dart';
 
 void main() {
   group('json_safe helpers', () {
     test('safeEnum is bounds- and type-checked', () {
-      expect(safeEnum(99, AssetType.values, AssetType.other), AssetType.other);
-      expect(safeEnum(-1, AssetType.values, AssetType.other), AssetType.other);
-      expect(safeEnum('x', AssetType.values, AssetType.other), AssetType.other);
-      expect(safeEnum(0, AssetType.values, AssetType.other), AssetType.values[0]);
+      expect(safeEnum(99, Mood.values, Mood.neutral), Mood.neutral);
+      expect(safeEnum(-1, Mood.values, Mood.neutral), Mood.neutral);
+      expect(safeEnum('x', Mood.values, Mood.neutral), Mood.neutral);
+      expect(safeEnum(0, Mood.values, Mood.neutral), Mood.values[0]);
     });
 
     test('safeDouble / safeInt coerce or fall back', () {
@@ -31,15 +30,6 @@ void main() {
   });
 
   group('fromJson never throws on malformed data', () {
-    test('Holding', () {
-      final h = Holding.fromJson(
-          {'type': 99, 'units': 'x', 'buyDate': 'bad', 'symbol': 5});
-      expect(h.type, AssetType.other);
-      expect(h.units, 0);
-      expect(h.id, '');
-      expect(h.symbol, '5');
-    });
-
     test('Expense', () {
       final e =
           Expense.fromJson({'mood': 50, 'needWant': -1, 'createdAt': null});
@@ -68,7 +58,6 @@ void main() {
     });
 
     test('empty maps yield defaults without throwing', () {
-      expect(() => Holding.fromJson({}), returnsNormally);
       expect(() => Expense.fromJson({}), returnsNormally);
       expect(() => Goal.fromJson({}), returnsNormally);
       expect(() => ActivityLog.fromJson({}), returnsNormally);

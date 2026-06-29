@@ -29,7 +29,7 @@ import '../worth/worth_quiz_screen.dart';
 import '../wrapped/wrapped_screen.dart';
 
 class DashboardScreen extends ConsumerWidget {
-  /// Switches the HomeShell tab (0 Home, 1 Goals, 2 Invest, 3 Tools, 4 Profile).
+  /// Switches the HomeShell tab (0 Home, 1 Goals, 2 Wealth, 3 Tools, 4 Profile).
   /// Used by the GROW section to send users deeper into the app.
   final void Function(int index)? onTab;
   const DashboardScreen({super.key, this.onTab});
@@ -75,9 +75,8 @@ class DashboardScreen extends ConsumerWidget {
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () async {
-            // Data is live via Firestore streams; refresh re-pulls live prices
-            // and gives tactile feedback.
-            ref.invalidate(livePricesProvider);
+            // Data is live via Firestore streams; the pull is just for tactile
+            // feedback / a moment of "something happened".
             await Future<void>.delayed(const Duration(milliseconds: 400));
           },
           child: ContentWidth(
@@ -759,7 +758,7 @@ class _SpineHeader extends StatelessWidget {
   }
 }
 
-/// GROW entry — sends users from the home loop into Goals / Invest / Tools.
+/// GROW entry — sends users from the home loop into Goals / Wealth / Tools.
 class _GrowCard extends StatelessWidget {
   final void Function(int index)? onTab;
   const _GrowCard({this.onTab});
@@ -773,7 +772,7 @@ class _GrowCard extends StatelessWidget {
         children: [
           Text('Put your hours to work', style: t.titleLarge),
           const SizedBox(height: 2),
-          Text('Set goals, invest, and plan your freedom.',
+          Text('Set goals, plan your wealth, and reach freedom.',
               style: t.bodyMedium),
           const SizedBox(height: 14),
           Row(
@@ -784,8 +783,8 @@ class _GrowCard extends StatelessWidget {
                   onTap: () => onTab?.call(1)),
               const SizedBox(width: 10),
               _GrowChip(
-                  icon: Icons.pie_chart_rounded,
-                  label: 'Invest',
+                  icon: Icons.savings_rounded,
+                  label: 'Wealth',
                   onTap: () => onTab?.call(2)),
               const SizedBox(width: 10),
               _GrowChip(

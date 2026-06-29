@@ -8,10 +8,9 @@ import '../state/app_providers.dart';
 import 'dashboard/dashboard_screen.dart';
 import 'expense/add_expense_screen.dart';
 import 'goals/goals_screen.dart';
-import 'invest/holding_form_screen.dart';
-import 'invest/portfolio_screen.dart';
 import 'profile/profile_screen.dart';
 import 'tools/tools_screen.dart';
+import 'wealth/wealth_screen.dart';
 
 class HomeShell extends ConsumerStatefulWidget {
   const HomeShell({super.key});
@@ -23,12 +22,12 @@ class HomeShell extends ConsumerStatefulWidget {
 class _HomeShellState extends ConsumerState<HomeShell> {
   int _index = 0;
 
-  // Dashboard gets a callback so its GROW section can jump to the Goals/Invest/
+  // Dashboard gets a callback so its GROW section can jump to the Goals/Wealth/
   // Tools tabs — reinforcing the EARN→SPEND→DECIDE→GROW spine.
   late final List<Widget> _tabs = [
     DashboardScreen(onTab: _select),
     const GoalsScreen(),
-    const PortfolioScreen(),
+    const WealthScreen(),
     const ToolsScreen(),
     const ProfileScreen(),
   ];
@@ -40,7 +39,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   static const _items = [
     (Icons.home_rounded, 'Home'),
     (Icons.flag_rounded, 'Goals'),
-    (Icons.pie_chart_rounded, 'Invest'),
+    (Icons.savings_rounded, 'Wealth'),
     (Icons.calculate_rounded, 'Tools'),
     (Icons.person_rounded, 'Profile'),
   ];
@@ -67,15 +66,6 @@ class _HomeShellState extends ConsumerState<HomeShell> {
           onPressed: () => _addGoalSheet(),
           icon: const Icon(Icons.add),
           label: const Text('New goal'),
-        );
-      case 2:
-        return FloatingActionButton.extended(
-          heroTag: 'fab_holding',
-          onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const HoldingFormScreen()),
-          ),
-          icon: const Icon(Icons.add),
-          label: const Text('Add holding'),
         );
       default:
         return null;

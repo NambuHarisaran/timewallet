@@ -24,10 +24,10 @@ const _steps = <_Step>[
       'Put a "want" on a 24-hour hold. Skip it and you reclaim that work-time — it adds up.'),
   _Step(Icons.flag_outlined, AppColors.auroraGreen, 'Goals in work-days',
       'Set a goal and see how many work-days — and how much overtime per day — it takes to reach it.'),
-  _Step(Icons.pie_chart_outline, AppColors.auroraGreen, 'Invest & track',
-      'Track stocks, gold and mutual funds. Your gains and losses are shown as work-time too.'),
+  _Step(Icons.savings_outlined, AppColors.auroraGreen, 'Plan your wealth',
+      'Six engines: asset allocation, a financial-health score, SWP income, a debt payoff engine, child-legacy and retirement planning.'),
   _Step(Icons.calculate_outlined, AppColors.auroraTime, 'Tools that decide',
-      '"Worth it?" checks any price in work-time. Plus SIP, EMI, FD, inflation, and a financial-freedom countdown.'),
+      '"Worth it?" checks any price in work-time. Plus SIP, FD, inflation, and a financial-freedom countdown.'),
   _Step(Icons.insights_outlined, AppColors.auroraTime, 'Insights & extras',
       'Insights and your Wrapped recap, subscription audit, category budgets, and a full expense history — all in one place.'),
 ];

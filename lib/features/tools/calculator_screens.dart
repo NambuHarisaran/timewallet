@@ -100,49 +100,6 @@ class _LumpsumState extends State<LumpsumCalculatorScreen> {
 }
 
 // ---------------------------------------------------------------------------
-// EMI
-// ---------------------------------------------------------------------------
-class EmiCalculatorScreen extends StatefulWidget {
-  const EmiCalculatorScreen({super.key});
-  @override
-  State<EmiCalculatorScreen> createState() => _EmiState();
-}
-
-class _EmiState extends State<EmiCalculatorScreen> {
-  double _principal = 500000, _rate = 9, _years = 5;
-
-  @override
-  Widget build(BuildContext context) {
-    final r = Calculators.emi(
-        principal: _principal, annualRatePct: _rate, years: _years);
-    return _CalcScaffold(
-      title: 'EMI calculator',
-      sliders: [
-        _CalcSlider('Loan amount', _principal, 10000, 10000000, 999,
-            (v) => setState(() => _principal = v), _money.format(_principal)),
-        _CalcSlider('Interest rate', _rate, 1, 24, 46,
-            (v) => setState(() => _rate = v), '${_rate.toStringAsFixed(1)}% p.a.'),
-        _CalcSlider('Tenure', _years, 1, 30, 29,
-            (v) => setState(() => _years = v), '${_years.toStringAsFixed(0)} yrs'),
-      ],
-      result: _ResultCard(
-        accent: AppColors.warn,
-        headline: 'Monthly EMI',
-        headlineValue: _money.format(r.emi),
-        leftLabel: 'Principal',
-        leftValue: _principal,
-        rightLabel: 'Interest',
-        rightValue: r.totalInterest,
-        leftColor: AppColors.money,
-        rightColor: AppColors.warn,
-        bottomLabel: 'Total payable',
-        bottomValue: r.totalPayable,
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Money → time (the signature tool)
 // ---------------------------------------------------------------------------
 class TimeValueScreen extends ConsumerStatefulWidget {
@@ -322,46 +279,6 @@ class _InflationState extends State<InflationCalculatorScreen> {
 }
 
 // ---------------------------------------------------------------------------
-// Retirement corpus
-// ---------------------------------------------------------------------------
-class RetirementCalculatorScreen extends StatefulWidget {
-  const RetirementCalculatorScreen({super.key});
-  @override
-  State<RetirementCalculatorScreen> createState() => _RetireState();
-}
-
-class _RetireState extends State<RetirementCalculatorScreen> {
-  double _expense = 30000, _years = 25, _infl = 6;
-
-  @override
-  Widget build(BuildContext context) {
-    final r = Calculators.retirementCorpus(
-        monthlyExpense: _expense, yearsToRetire: _years, inflationPct: _infl);
-    return _CalcScaffold(
-      title: 'Retirement corpus',
-      sliders: [
-        _CalcSlider('Monthly expense now', _expense, 5000, 500000, 99,
-            (v) => setState(() => _expense = v), _money.format(_expense),
-            accent: AppColors.positive),
-        _CalcSlider('Years to retire', _years, 1, 40, 39,
-            (v) => setState(() => _years = v), '${_years.toStringAsFixed(0)} yrs',
-            accent: AppColors.positive),
-        _CalcSlider('Inflation', _infl, 1, 12, 44,
-            (v) => setState(() => _infl = v), '${_infl.toStringAsFixed(1)}% p.a.',
-            accent: AppColors.positive),
-      ],
-      result: _SimpleResult(
-        accent: AppColors.positive,
-        headline: 'Corpus needed',
-        value: _money.format(r.corpus),
-        footnote:
-            'To draw ${_money.format(r.futureMonthly)}/month at retirement (today\'s ${_money.format(_expense)}), using the 4% rule.',
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Financial freedom countdown
 // ---------------------------------------------------------------------------
 class FinancialFreedomScreen extends StatefulWidget {
@@ -444,11 +361,9 @@ class _CrossoverState extends ConsumerState<CrossoverScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Seed once from the user's real portfolio + monthly spend.
+    // Seed expenses once from the user's real monthly spend.
     if (!_seeded) {
-      final pv = ref.read(portfolioProvider).value;
       final spend = ref.read(monthSpendProvider);
-      if (pv > 0) _corpus = pv;
       if (spend > 0) _expense = spend;
       _seeded = true;
     }
@@ -636,8 +551,6 @@ class _ResultCard extends StatelessWidget {
   final String leftLabel, rightLabel;
   final double leftValue, rightValue;
   final Color leftColor, rightColor;
-  final String? bottomLabel;
-  final double? bottomValue;
   final Color accent;
 
   const _ResultCard({
@@ -650,8 +563,6 @@ class _ResultCard extends StatelessWidget {
     required this.leftColor,
     required this.rightColor,
     this.footnote,
-    this.bottomLabel,
-    this.bottomValue,
     this.accent = AppColors.time,
   });
 
@@ -694,17 +605,6 @@ class _ResultCard extends StatelessWidget {
           _legendRow(context, leftColor, leftLabel, leftValue),
           const SizedBox(height: 8),
           _legendRow(context, rightColor, rightLabel, rightValue),
-          if (bottomLabel != null && bottomValue != null) ...[
-            const Divider(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(bottomLabel!, style: t.bodyLarge),
-                Text(_money.format(bottomValue),
-                    style: t.titleLarge),
-              ],
-            ),
-          ],
         ],
       ),
     );

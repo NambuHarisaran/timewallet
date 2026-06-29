@@ -12,17 +12,10 @@ import '../data/models/activity.dart';
 import '../data/models/category_budget.dart';
 import '../data/models/expense.dart';
 import '../data/models/goal.dart';
-import '../data/models/holding.dart';
 import '../data/models/recurring_expense.dart';
 import '../data/models/user_profile.dart';
 import '../services/auth_service.dart';
 import '../services/notification_service.dart';
-import '../services/price_provider.dart';
-import '../services/price_resolver.dart';
-import '../services/providers/finnhub_provider.dart';
-import '../services/providers/goldapi_provider.dart';
-import '../services/providers/mfapi_provider.dart';
-import '../services/providers/twelve_data_provider.dart';
 
 const _uuid = Uuid();
 
@@ -78,9 +71,6 @@ final goalsProvider = StreamProvider<List<Goal>>(
 
 final workedProvider = StreamProvider<Map<String, double>>(
     (ref) => ref.watch(backendProvider).watchWorked());
-
-final holdingsProvider = StreamProvider<List<Holding>>(
-    (ref) => ref.watch(backendProvider).watchHoldings());
 
 final activityProvider = StreamProvider<List<ActivityLog>>(
     (ref) => ref.watch(backendProvider).watchActivity());
@@ -210,133 +200,6 @@ final workTodayProvider = Provider<WorkToday>((ref) {
   );
 });
 
-/// Rolled-up portfolio totals across every holding.
-class PortfolioSummary {
-  final double invested;
-  final double value;
-  final Map<AssetType, double> valueByType;
-  final int count;
-
-  const PortfolioSummary({
-    this.invested = 0,
-    this.value = 0,
-    this.valueByType = const {},
-    this.count = 0,
-  });
-
-  double get pl => value - invested;
-  double get plPct => invested <= 0 ? 0 : pl / invested;
-  bool get isUp => pl >= 0;
-  bool get isEmpty => count == 0;
-}
-
-// ---------------------------------------------------------------------------
-// Live prices (Phase 2)
-// ---------------------------------------------------------------------------
-/// Ordered provider chain. Stocks: Finnhub → Twelve Data (fallback, if keyed).
-/// Gold: GoldAPI. Mutual funds: mfapi.in (no key). Removing/adding a vendor is
-/// a one-line change here — nothing else depends on a specific source.
-final priceResolverProvider = Provider<PriceResolver>((ref) {
-  final resolver = PriceResolver([
-    FinnhubProvider(),
-    TwelveDataProvider(),
-    GoldApiProvider(),
-    MfapiProvider(),
-  ]);
-  ref.onDispose(resolver.clearCache);
-  return resolver;
-});
-
-/// One holding valued at its effective price (live → manual → buy price).
-class HoldingValue {
-  final Holding holding;
-  final double price;
-  final DateTime? asOf; // when the live quote was taken; null if not live
-  final double? changePct;
-  final bool live;
-
-  const HoldingValue({
-    required this.holding,
-    required this.price,
-    required this.live,
-    this.asOf,
-    this.changePct,
-  });
-
-  double get invested => holding.invested;
-  double get value => holding.units * price;
-  double get pl => value - invested;
-  double get plPct => invested <= 0 ? 0 : pl / invested;
-  bool get isUp => pl >= 0;
-
-  /// True once a real price exists (live or manually entered).
-  bool get hasPrice => live || holding.manualPrice != null;
-}
-
-/// Fetches live quotes for every holding that supports it (stocks w/ symbol,
-/// gold). Keyed by holding id. Empty entries fall back to manual price in the
-/// UI. Refresh by `ref.invalidate(livePricesProvider)`.
-final livePricesProvider = FutureProvider<Map<String, Quote>>((ref) async {
-  final holdings = ref.watch(holdingsProvider).asData?.value ?? const <Holding>[];
-  final resolver = ref.watch(priceResolverProvider);
-  final out = <String, Quote>{};
-  for (final h in holdings) {
-    try {
-      final q = switch (h.type) {
-        AssetType.stock when (h.symbol?.isNotEmpty ?? false) =>
-          await resolver.resolve(h.symbol!, AssetType.stock),
-        AssetType.gold =>
-          await resolver.resolve('XAU', AssetType.gold, meta: h.meta ?? '22k'),
-        AssetType.mutualFund when (h.symbol?.isNotEmpty ?? false) =>
-          await resolver.resolve(h.symbol!, AssetType.mutualFund),
-        _ => null,
-      };
-      if (q != null) out[h.id] = q;
-    } catch (_) {
-      // Skip this symbol; others still resolve. UI falls back to manual.
-    }
-  }
-  return out;
-});
-
-/// Holdings valued with live quotes where available.
-List<HoldingValue> valueHoldings(
-    List<Holding> holdings, Map<String, Quote> live) {
-  return [
-    for (final h in holdings)
-      HoldingValue(
-        holding: h,
-        price: live[h.id]?.price ?? h.manualPrice ?? h.buyPrice,
-        live: live.containsKey(h.id),
-        asOf: live[h.id]?.asOf,
-        changePct: live[h.id]?.changePct,
-      ),
-  ];
-}
-
-PortfolioSummary summarizeValues(List<HoldingValue> values) {
-  if (values.isEmpty) return const PortfolioSummary();
-  var invested = 0.0, value = 0.0;
-  final byType = <AssetType, double>{};
-  for (final v in values) {
-    invested += v.invested;
-    value += v.value;
-    byType[v.holding.type] = (byType[v.holding.type] ?? 0) + v.value;
-  }
-  return PortfolioSummary(
-    invested: invested,
-    value: value,
-    valueByType: byType,
-    count: values.length,
-  );
-}
-
-/// Manual-only summary (no live prices). Kept for fallback/compat.
-final portfolioProvider = Provider<PortfolioSummary>((ref) {
-  final list = ref.watch(holdingsProvider).asData?.value ?? const <Holding>[];
-  return summarizeValues(valueHoldings(list, const {}));
-});
-
 // ---------------------------------------------------------------------------
 // Mutations — single place that writes to the backend.
 // ---------------------------------------------------------------------------
@@ -450,44 +313,6 @@ class AppActions {
   Future<void> deleteGoal(String id) async {
     await _b.deleteGoal(id);
     await _log(ActivityType.goalDeleted, 'Deleted goal');
-  }
-
-  Future<Holding> addHolding({
-    required AssetType type,
-    required String name,
-    required double units,
-    required double buyPrice,
-    required DateTime buyDate,
-    String? symbol,
-    double? manualPrice,
-    String? meta,
-  }) async {
-    final h = Holding(
-      id: _uuid.v4(),
-      type: type,
-      name: name,
-      units: units,
-      buyPrice: buyPrice,
-      buyDate: buyDate,
-      symbol: symbol,
-      manualPrice: manualPrice,
-      meta: meta,
-    );
-    await _b.upsertHolding(h);
-    await _log(ActivityType.holdingAdded, 'Added ${type.label}: $name',
-        subtitle: '${units.toStringAsFixed(units % 1 == 0 ? 0 : 2)} ${type.unitLabel}',
-        amount: h.invested);
-    return h;
-  }
-
-  Future<void> saveHolding(Holding h) async {
-    await _b.upsertHolding(h);
-    await _log(ActivityType.holdingUpdated, 'Updated ${h.name}');
-  }
-
-  Future<void> deleteHolding(String id) async {
-    await _b.deleteHolding(id);
-    await _log(ActivityType.holdingDeleted, 'Deleted holding');
   }
 
   /// Logs work for the current shift, clamped so the daily target can't be

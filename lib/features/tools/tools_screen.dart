@@ -73,14 +73,8 @@ class _ToolsScreenState extends ConsumerState<ToolsScreen> {
     _Tool(Icons.account_balance_outlined, 'FD calculator',
         'Fixed deposit maturity', AppColors.money,
         () => const FdCalculatorScreen(), advanced: true),
-    _Tool(Icons.home_outlined, 'EMI calculator',
-        'Loan monthly payment & interest', AppColors.warn,
-        () => const EmiCalculatorScreen(), advanced: true),
     _Tool(Icons.trending_down, 'Inflation impact', 'Future cost of money',
         AppColors.warn, () => const InflationCalculatorScreen(),
-        advanced: true),
-    _Tool(Icons.elderly_outlined, 'Retirement', "Corpus you'll need",
-        AppColors.positive, () => const RetirementCalculatorScreen(),
         advanced: true),
   ];
 
@@ -137,7 +131,7 @@ class _ToolsScreenState extends ConsumerState<ToolsScreen> {
                                   style: t.titleLarge),
                               const SizedBox(height: 2),
                               Text(
-                                  '${advanced.length} more — SIP, FD, EMI, crossover & more',
+                                  '${advanced.length} more — SIP, FD, inflation, crossover & more',
                                   style: t.bodyMedium),
                             ],
                           ),
