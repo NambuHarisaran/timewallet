@@ -18,8 +18,10 @@ service cloud.firestore {
     function strOk(v, max) {
       return v is string && v.size() <= max;
     }
+    // Upper bound blocks absurd magnitudes (1e308 etc.) that would corrupt
+    // aggregates and charts; 1e11 is far beyond any real amount/minutes (S11).
     function numOk(v) {
-      return v is number && v >= 0;
+      return v is number && v >= 0 && v <= 100000000000;
     }
     function intIn(v, lo, hi) {
       return v is int && v >= lo && v <= hi;
@@ -68,7 +70,9 @@ service cloud.firestore {
         allow read, delete: if owner(userId);
         allow write: if owner(userId)
           && request.resource.data.size() <= 10
-          && request.resource.data.type is int
+          // ActivityType enum currently has 14 values; 0..31 leaves headroom
+          // for new types without a rules redeploy (S11).
+          && intIn(request.resource.data.type, 0, 31)
           && strOk(request.resource.data.title, 160);
       }
 

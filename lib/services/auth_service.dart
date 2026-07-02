@@ -139,7 +139,10 @@ class AuthService {
           return 'Auth provider not configured. Enable a sign-in method in '
               'Firebase Console → Authentication.';
         default:
-          return e.message ?? 'Authentication failed (${e.code}).';
+          // Never surface e.message raw: Firebase internal messages can leak
+          // backend details (blocking-function output, quota internals). The
+          // code alone is enough for support without the leak (S12).
+          return 'Authentication failed (${e.code}). Please try again.';
       }
     }
     return 'Something went wrong. Please try again.';
