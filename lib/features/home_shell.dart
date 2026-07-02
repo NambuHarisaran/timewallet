@@ -19,8 +19,42 @@ class HomeShell extends ConsumerStatefulWidget {
   ConsumerState<HomeShell> createState() => _HomeShellState();
 }
 
-class _HomeShellState extends ConsumerState<HomeShell> {
+class _HomeShellState extends ConsumerState<HomeShell>
+    with WidgetsBindingObserver {
   int _index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _onAppOpen();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _onAppOpen();
+  }
+
+  /// App-open housekeeping (M2). Both calls are self-guarding and must never
+  /// block or break the UI.
+  Future<void> _onAppOpen() async {
+    try {
+      // Salaried auto-log: credit the standard work-day once per working day.
+      await ref.read(appActionsProvider).autoLogStandardDay();
+    } catch (_) {}
+    try {
+      // Re-anchor the daily reminder with a fresh personalized body — the
+      // schedule otherwise keeps whatever streak/subscription text it had
+      // when it was last set.
+      await ref.read(dailyReminderProvider.notifier).refresh();
+    } catch (_) {}
+  }
 
   // Dashboard gets a callback so its GROW section can jump to the Goals/Wealth/
   // Tools tabs — reinforcing the EARN→SPEND→DECIDE→GROW spine.
@@ -61,100 +95,17 @@ class _HomeShellState extends ConsumerState<HomeShell> {
           label: const Text('Add expense'),
         );
       case 1:
+        // Shared sheet (goals_screen.dart) — single copy of validation and
+        // failure handling for FAB + empty-state paths (Q1).
         return FloatingActionButton.extended(
           heroTag: 'fab_goal',
-          onPressed: () => _addGoalSheet(),
+          onPressed: () => showAddGoalSheet(context, ref),
           icon: const Icon(Icons.add),
           label: const Text('New goal'),
         );
       default:
         return null;
     }
-  }
-
-  void _addGoalSheet() {
-    final title = TextEditingController();
-    final amount = TextEditingController();
-    String emoji = 'target';
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (_) => StatefulBuilder(
-        builder: (ctx, setSheet) => Padding(
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 8,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('New goal', style: Theme.of(ctx).textTheme.titleLarge),
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 8,
-                children: goalIcons.keys.map((k) {
-                  final selected = emoji == k;
-                  return ChoiceChip(
-                    showCheckmark: false,
-                    label: Icon(goalIcons[k],
-                        size: 20,
-                        color: selected ? AppColors.accent : null),
-                    selected: selected,
-                    onSelected: (_) => setSheet(() => emoji = k),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: title,
-                onChanged: (_) => setSheet(() {}),
-                decoration: const InputDecoration(labelText: 'What for?'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: amount,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                onChanged: (_) => setSheet(() {}),
-                decoration: const InputDecoration(
-                    labelText: 'Target amount', prefixText: '₹ '),
-              ),
-              const SizedBox(height: 20),
-              // Disabled until valid — no silent no-op taps (U4). NOT awaited:
-              // offline-first writes only ack after sync; instead a late
-              // failure surfaces on the app messenger (U5).
-              FilledButton(
-                onPressed: (title.text.trim().isEmpty ||
-                        (double.tryParse(amount.text) ?? 0) <= 0)
-                    ? null
-                    : () {
-                        final messenger = ScaffoldMessenger.of(context);
-                        ref
-                            .read(appActionsProvider)
-                            .addGoal(
-                              title: title.text.trim(),
-                              emoji: emoji,
-                              amount: double.tryParse(amount.text) ?? 0,
-                            )
-                            .catchError((_) {
-                          messenger.showSnackBar(const SnackBar(
-                              content: Text(
-                                  "Couldn't save the goal — check your connection and try again.")));
-                        });
-                        Navigator.pop(context);
-                      },
-                child: const Text('Create goal'),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 
   @override

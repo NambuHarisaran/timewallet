@@ -4,12 +4,13 @@ import 'package:intl/intl.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/time/duration_format.dart';
+import '../../core/util/formatters.dart';
 import '../../data/models/expense.dart';
 import '../../state/app_providers.dart';
 import '../../widgets/responsive_body.dart';
 import '../../widgets/section_card.dart';
 
-final _fmt = NumberFormat.currency(symbol: '₹', decimalDigits: 0);
+final _fmt = moneyFmt;
 
 /// Full expense ledger: monitor every expense and swipe to delete. Operates on
 /// the live expense stream so deletions are immediate and permanent.
@@ -78,9 +79,19 @@ class ExpensesScreen extends ConsumerWidget {
                             expense: e,
                             hoursPerDay: profile.hoursPerDay,
                             tracksTime: profile.tracksTime,
-                            onDelete: () => ref
-                                .read(appActionsProvider)
-                                .deleteExpense(e.id),
+                            // Not awaited (offline-first); surface a real
+                            // rejection instead of dropping it silently (Q11).
+                            onDelete: () {
+                              final messenger = ScaffoldMessenger.of(context);
+                              ref
+                                  .read(appActionsProvider)
+                                  .deleteExpense(e.id)
+                                  .catchError((_) {
+                                messenger.showSnackBar(const SnackBar(
+                                    content: Text(
+                                        "Couldn't delete — check your connection and try again.")));
+                              });
+                            },
                           )),
                     ],
                   ),

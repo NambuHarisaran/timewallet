@@ -40,6 +40,93 @@ void main() {
     });
   });
 
+  group('isRestDay', () {
+    test('5-day week rests Sat and Sun', () {
+      expect(isRestDay(DateTime.friday, 5), isFalse);
+      expect(isRestDay(DateTime.saturday, 5), isTrue);
+      expect(isRestDay(DateTime.sunday, 5), isTrue);
+    });
+    test('6-day week rests only Sunday', () {
+      expect(isRestDay(DateTime.saturday, 6), isFalse);
+      expect(isRestDay(DateTime.sunday, 6), isTrue);
+    });
+    test('7-day week never rests', () {
+      expect(isRestDay(DateTime.sunday, 7), isFalse);
+    });
+  });
+
+  group('engagementStreak', () {
+    // June 2026: the 1st is a Monday → 6=Sat, 7=Sun, 8=Mon, 12=Fri, 13=Sat,
+    // 14=Sun, 15=Mon. Keys use the unpadded 'y-m-d' format the app writes.
+    String k(int day) => '2026-6-$day';
+    DateTime d(int day) => DateTime(2026, 6, day);
+
+    test('consecutive active days count', () {
+      final streak = engagementStreak(
+        activeDays: {k(1), k(2), k(3)},
+        workDaysPerWeek: 7,
+        today: d(3),
+      );
+      expect(streak, 3);
+    });
+
+    test('weekend gap does NOT break a 5-day worker streak (the M2 fix)', () {
+      // Active Thu 11, Fri 12 and Mon 15; Sat 13 + Sun 14 untouched.
+      final streak = engagementStreak(
+        activeDays: {k(11), k(12), k(15)},
+        workDaysPerWeek: 5,
+        today: d(15),
+      );
+      expect(streak, 3, reason: 'rest days are skipped, not breaking');
+    });
+
+    test('weekend does break a 7-day worker streak', () {
+      final streak = engagementStreak(
+        activeDays: {k(12), k(15)},
+        workDaysPerWeek: 7,
+        today: d(15),
+      );
+      expect(streak, 1, reason: 'Sun 14 was a working day and was missed');
+    });
+
+    test('today not logged yet is tolerated', () {
+      final streak = engagementStreak(
+        activeDays: {k(1), k(2)},
+        workDaysPerWeek: 7,
+        today: d(3),
+      );
+      expect(streak, 2);
+    });
+
+    test('a missed working day ends the streak', () {
+      // Tue 2 skipped: only Mon 1 active, today Wed 3.
+      final streak = engagementStreak(
+        activeDays: {k(1)},
+        workDaysPerWeek: 5,
+        today: d(3),
+      );
+      expect(streak, 0);
+    });
+
+    test('activity on a rest day still counts', () {
+      // Budget-mode user shops on Sat 13; Fri 12 also active.
+      final streak = engagementStreak(
+        activeDays: {k(12), k(13)},
+        workDaysPerWeek: 5,
+        today: d(13),
+      );
+      expect(streak, 2);
+    });
+
+    test('empty input is zero', () {
+      expect(
+        engagementStreak(
+            activeDays: const {}, workDaysPerWeek: 5, today: d(15)),
+        0,
+      );
+    });
+  });
+
   group('dailyReminderMessage', () {
     test('streak takes priority and is named', () {
       final m = dailyReminderMessage(

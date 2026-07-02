@@ -47,6 +47,8 @@ dependencies:
   # On-device receipt OCR (offline, no API key, no upload).
   google_mlkit_text_recognition: ^0.15.0
   image_picker: ^1.1.2
+  firebase_analytics: ^12.4.3
+  timezone: ^0.10.1
 
 dev_dependencies:
   flutter_test:

@@ -32,6 +32,11 @@ class UserProfile {
   /// equipment). Deducted to reveal the true hourly wage.
   final double workCostsPerMonth;
 
+  /// Salaried convenience (M2): when true the app credits a full standard
+  /// work-day automatically on each working day, so fixed-salary users never
+  /// have to "log hours" — they only edit exceptions (leave, overtime).
+  final bool standardDayAutoLog;
+
   const UserProfile({
     this.name = '',
     this.age = 0,
@@ -47,6 +52,7 @@ class UserProfile {
     this.overtimePaid = true,
     this.commuteMinutesPerDay = 0,
     this.workCostsPerMonth = 0,
+    this.standardDayAutoLog = false,
   });
 
   bool get isNightShift => workDayStartHour != 0;
@@ -131,6 +137,7 @@ class UserProfile {
     bool? overtimePaid,
     double? commuteMinutesPerDay,
     double? workCostsPerMonth,
+    bool? standardDayAutoLog,
   }) {
     return UserProfile(
       name: name ?? this.name,
@@ -147,6 +154,7 @@ class UserProfile {
       overtimePaid: overtimePaid ?? this.overtimePaid,
       commuteMinutesPerDay: commuteMinutesPerDay ?? this.commuteMinutesPerDay,
       workCostsPerMonth: workCostsPerMonth ?? this.workCostsPerMonth,
+      standardDayAutoLog: standardDayAutoLog ?? this.standardDayAutoLog,
     );
   }
 
@@ -165,6 +173,7 @@ class UserProfile {
         'overtimePaid': overtimePaid,
         'commuteMinutesPerDay': commuteMinutesPerDay,
         'workCostsPerMonth': workCostsPerMonth,
+        'standardDayAutoLog': standardDayAutoLog,
       };
 
   factory UserProfile.fromJson(Map<String, dynamic> j) => UserProfile(
@@ -183,5 +192,6 @@ class UserProfile {
         overtimePaid: j['overtimePaid'] != false,
         commuteMinutesPerDay: safeDouble(j['commuteMinutesPerDay']),
         workCostsPerMonth: safeDouble(j['workCostsPerMonth']),
+        standardDayAutoLog: j['standardDayAutoLog'] == true,
       );
 }

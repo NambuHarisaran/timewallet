@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/time/duration_format.dart';
+import '../../core/util/formatters.dart';
 import '../../data/models/expense.dart';
 import '../../data/models/recurring_expense.dart';
 import '../../state/app_providers.dart';
@@ -12,7 +12,7 @@ import '../../widgets/gradient_card.dart';
 import '../../widgets/responsive_body.dart';
 import '../../widgets/section_card.dart';
 
-final _fmt = NumberFormat.currency(symbol: '₹', decimalDigits: 0);
+final _fmt = moneyFmt;
 
 class RecurringScreen extends ConsumerWidget {
   const RecurringScreen({super.key});
@@ -78,8 +78,40 @@ class RecurringScreen extends ConsumerWidget {
                 return Dismissible(
                   key: ValueKey(r.id),
                   direction: DismissDirection.endToStart,
-                  onDismissed: (_) =>
-                      ref.read(appActionsProvider).deleteRecurring(r.id),
+                  // Destructive parity with the expense ledger (Q6): confirm
+                  // before a swipe permanently removes a subscription.
+                  confirmDismiss: (_) => showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('Remove subscription?'),
+                      content: Text(
+                          '${r.name} (${_fmt.format(r.amount)} ${r.cycle.label.toLowerCase()}) '
+                          'will no longer count toward Invisible Work.'),
+                      actions: [
+                        TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: const Text('Cancel')),
+                        FilledButton(
+                          style: FilledButton.styleFrom(
+                              backgroundColor: AppColors.warn),
+                          onPressed: () => Navigator.pop(ctx, true),
+                          child: const Text('Remove'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Not awaited (offline-first); surface real failures (Q11).
+                  onDismissed: (_) {
+                    final messenger = ScaffoldMessenger.of(context);
+                    ref
+                        .read(appActionsProvider)
+                        .deleteRecurring(r.id)
+                        .catchError((_) {
+                      messenger.showSnackBar(const SnackBar(
+                          content: Text(
+                              "Couldn't remove — check your connection and try again.")));
+                    });
+                  },
                   background: Container(
                     alignment: Alignment.centerRight,
                     padding: const EdgeInsets.only(right: 20),

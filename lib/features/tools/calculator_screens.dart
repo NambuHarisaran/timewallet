@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart' show DateFormat;
 
 import '../../core/finance/calculators.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/time/duration_format.dart';
+import '../../core/util/formatters.dart';
 import '../../state/app_providers.dart';
 import '../../widgets/section_card.dart';
 
-final _money = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
+final _money = moneyFmt;
 
 // ---------------------------------------------------------------------------
 // SIP

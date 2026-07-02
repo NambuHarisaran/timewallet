@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/util/formatters.dart';
 import '../../data/models/user_profile.dart';
 import '../../state/app_providers.dart';
 import '../../widgets/section_card.dart';
@@ -28,6 +28,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   late double _hoursPerDay;
   late int _workDayStartHour;
   late bool _overtimePaid;
+  late bool _standardDayAutoLog;
 
   static const Map<Persona, (IconData, String)> _personaLabels = {
     Persona.student: (Icons.school_outlined, 'Student'),
@@ -66,6 +67,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     _hoursPerDay = p.hoursPerDay;
     _workDayStartHour = p.workDayStartHour;
     _overtimePaid = p.overtimePaid;
+    _standardDayAutoLog = p.standardDayAutoLog;
   }
 
   @override
@@ -123,6 +125,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       overtimePaid: _overtimePaid,
       commuteMinutesPerDay: _commuteMin,
       workCostsPerMonth: _workCostsM,
+      standardDayAutoLog: _standardDayAutoLog,
       onboarded: true,
     );
     ref.read(appActionsProvider).saveProfile(next);
@@ -134,7 +137,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
-    final fmt = NumberFormat.currency(symbol: '₹', decimalDigits: 0);
+    final fmt = moneyFmt;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Edit profile')),
@@ -232,13 +235,23 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               value: _overtimePaid,
               onChanged: (v) => setState(() => _overtimePaid = v),
             ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Auto-fill my standard work day'),
+              subtitle: const Text(
+                  'Fixed salary? We log your full day automatically on working '
+                  'days — you only edit exceptions like leave or overtime.'),
+              value: _standardDayAutoLog,
+              onChanged: (v) => setState(() => _standardDayAutoLog = v),
+            ),
             const SizedBox(height: 8),
             Text('Real wage (optional)', style: t.titleLarge),
             const SizedBox(height: 4),
             Text(
               'Time and money you spend only because you work. We deduct these '
               'to show what your hour is really worth.',
-              style: t.bodySmall?.copyWith(color: Colors.white60),
+              // Theme-aware: hard-coded white60 was invisible in light mode (U1 stray).
+              style: t.bodySmall?.copyWith(color: AppColors.muted(context)),
             ),
             const SizedBox(height: 12),
             _moneyField(_commute, 'Commute minutes / day',

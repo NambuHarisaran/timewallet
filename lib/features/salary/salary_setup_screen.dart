@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/util/formatters.dart';
 import '../../data/models/user_profile.dart';
 import '../../state/app_providers.dart';
 import '../../widgets/gradient_card.dart';
@@ -66,7 +66,11 @@ class _SalarySetupScreenState extends ConsumerState<SalarySetupScreen> {
   bool get _valid => _isAllowance ? _monthly > 0 : _effectiveRate > 0;
 
   void _save() {
-    final profile = const UserProfile().copyWith(
+    // Seed from the CURRENT profile, not a default one: this screen is also
+    // reached from Profile → "Reset salary", and starting from defaults
+    // silently wiped fields it doesn't collect (commute minutes, work costs,
+    // currency symbol) — the True-Wage setup vanished on re-setup (Q2).
+    final profile = ref.read(profileOrDefaultProvider).copyWith(
       name: _name.text.trim(),
       age: int.tryParse(_age.text) ?? 0,
       persona: _persona,
@@ -88,7 +92,7 @@ class _SalarySetupScreenState extends ConsumerState<SalarySetupScreen> {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
-    final fmt = NumberFormat.currency(symbol: '₹', decimalDigits: 0);
+    final fmt = moneyFmt;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Set up your profile')),

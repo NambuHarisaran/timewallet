@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/time/duration_format.dart';
 import '../../core/time/time_engine.dart';
+import '../../core/util/formatters.dart';
 import '../../data/models/user_profile.dart';
 import '../../state/app_providers.dart';
 import '../../widgets/gradient_card.dart';
@@ -117,6 +117,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       overtimePaid: _overtimePaid,
       onboarded: true,
     );
+    ref.read(analyticsServiceProvider).onboardingComplete(
+        incomeType: _type.name, tracksTime: profile.tracksTime);
     ref.read(appActionsProvider).saveProfile(profile);
     // Profile stream emits onboarded:true → AuthGate swaps to HomeShell.
   }
@@ -382,7 +384,7 @@ class _AhaCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
-    final fmt = NumberFormat.currency(symbol: '₹', decimalDigits: 0);
+    final fmt = moneyFmt;
 
     if (!ready) {
       return GradientCard(

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:intl/intl.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/util/formatters.dart';
 import '../../widgets/section_card.dart';
 
 /// ₹ formatter shared across the Wealth engines (no decimals).
-final money = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
+final money = moneyFmt;
 
 /// Compact ₹ for chart axes: ₹1.2 Cr / ₹45.0 L / ₹8,000.
 String moneyShort(double v) {

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/util/formatters.dart';
 import '../../data/models/user_profile.dart';
 import '../../services/export_service.dart';
 import '../../state/app_providers.dart';
@@ -37,7 +37,7 @@ class ProfileScreen extends ConsumerWidget {
     final t = Theme.of(context).textTheme;
     final profile = ref.watch(profileOrDefaultProvider);
     final mode = ref.watch(themeModeProvider);
-    final fmt = NumberFormat.currency(symbol: '₹', decimalDigits: 0);
+    final fmt = moneyFmt;
     final email = ref.watch(firebaseAuthProvider).currentUser?.email ?? '';
 
     // Read BEFORE any inner Scaffold resets MediaQuery (same pattern as dashboard).
@@ -227,6 +227,15 @@ class ProfileScreen extends ConsumerWidget {
                   onChanged: (v) =>
                       ref.read(dailyReminderProvider.notifier).set(v),
                 ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  enabled: ref.watch(dailyReminderProvider),
+                  leading: const Icon(Icons.schedule_outlined),
+                  title: const Text('Reminder time'),
+                  subtitle: Text(_hourLabel(ref.watch(reminderHourProvider))),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _pickReminderHour(context, ref),
+                ),
                 const Divider(),
                 _tile(context, Icons.tune, 'Edit profile & income', null,
                     const EditProfileScreen()),
@@ -276,6 +285,24 @@ class ProfileScreen extends ConsumerWidget {
       ),        // ContentWidth
     ),          // SafeArea
   );            // Scaffold
+  }
+
+  String _hourLabel(int hour) {
+    final h12 = hour % 12 == 0 ? 12 : hour % 12;
+    return 'Every day at $h12:00 ${hour < 12 ? 'AM' : 'PM'}';
+  }
+
+  Future<void> _pickReminderHour(BuildContext context, WidgetRef ref) async {
+    final current = ref.read(reminderHourProvider);
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: current, minute: 0),
+      helpText: 'When should we nudge you?',
+    );
+    // Hour granularity is deliberate: the schedule uses inexact alarms anyway.
+    if (picked != null) {
+      await ref.read(reminderHourProvider.notifier).set(picked.hour);
+    }
   }
 
   /// Standard navigation tile — one look for every destination (U8).

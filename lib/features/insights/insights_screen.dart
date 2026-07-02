@@ -2,17 +2,17 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/time/duration_format.dart';
+import '../../core/util/formatters.dart';
 import '../../data/models/expense.dart';
 import '../../data/models/user_profile.dart';
 import '../../state/app_providers.dart';
 import '../../widgets/responsive_body.dart';
 import '../../widgets/section_card.dart';
 
-final _fmt = NumberFormat.currency(symbol: '₹', decimalDigits: 0);
+final _fmt = moneyFmt;
 
 class InsightsScreen extends ConsumerWidget {
   const InsightsScreen({super.key});

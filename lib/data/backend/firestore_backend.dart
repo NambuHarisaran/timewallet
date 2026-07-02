@@ -57,13 +57,10 @@ class FirestoreBackend implements DataBackend {
   Stream<UserProfile?> watchProfile() {
     return _userDoc.snapshots().map((snap) {
       final data = snap.data();
-      if (data == null || data.isEmpty || data['onboarded'] != true) {
-        // No profile yet (or not finished onboarding) -> treat as "none".
-        return data == null || data.isEmpty
-            ? null
-            : UserProfile.fromJson(data);
-      }
-      return UserProfile.fromJson(data);
+      // No doc yet (brand-new account) -> null routes AuthGate to onboarding.
+      // A parsed profile with onboarded=false routes there too, so no extra
+      // branching is needed here (Q5).
+      return (data == null || data.isEmpty) ? null : UserProfile.fromJson(data);
     });
   }
 

@@ -9,6 +9,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/time/duration_format.dart';
 import '../../core/util/engagement.dart';
+import '../../core/util/formatters.dart';
 import '../../data/models/expense.dart';
 import '../../state/app_providers.dart';
 import '../../widgets/celebrate.dart';
@@ -56,7 +57,7 @@ class DashboardScreen extends ConsumerWidget {
     final profile = ref.watch(profileOrDefaultProvider);
     final workedMin = ref.watch(workedTodayProvider);
     final todaySpend = ref.watch(todaySpendProvider);
-    final fmt = NumberFormat.currency(symbol: '₹', decimalDigits: 0);
+    final fmt = moneyFmt;
 
     final work = ref.watch(workTodayProvider);
     final earnedToday = work.earned;
@@ -583,7 +584,7 @@ class _BalanceCard extends ConsumerWidget {
     final spentPct = (monthSpend / income).clamp(0.0, 1.0);
     final low = balance < income * 0.1;
     final t = Theme.of(context).textTheme;
-    final fmt = NumberFormat.currency(symbol: '₹', decimalDigits: 0);
+    final fmt = moneyFmt;
     final color = low ? AppColors.warn : AppColors.positive;
 
     return SectionCard(
@@ -1126,7 +1127,7 @@ class _SubscriptionsCard extends ConsumerWidget {
     final monthly = ref.watch(monthlyRecurringCostProvider);
     final profile = ref.watch(profileOrDefaultProvider);
     final t = Theme.of(context).textTheme;
-    final fmt = NumberFormat.currency(symbol: '₹', decimalDigits: 0);
+    final fmt = moneyFmt;
     final tracks = profile.tracksTime && monthly > 0;
     final monthDays = profile.engine.daysFor(monthly);
     final yearDays = profile.engine.daysFor(monthly * 12);

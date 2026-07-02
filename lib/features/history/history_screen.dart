@@ -183,8 +183,15 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
           ],
         ),
       ),
-      onDismissed: (_) =>
-          ref.read(appActionsProvider).deleteExpenseEntry(log),
+      // Not awaited (offline-first); surface real failures (Q11).
+      onDismissed: (_) {
+        final messenger = ScaffoldMessenger.of(context);
+        ref.read(appActionsProvider).deleteExpenseEntry(log).catchError((_) {
+          messenger.showSnackBar(const SnackBar(
+              content: Text(
+                  "Couldn't delete — check your connection and try again.")));
+        });
+      },
       child: row,
     );
   }

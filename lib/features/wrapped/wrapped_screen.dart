@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/time/duration_format.dart';
+import '../../core/util/formatters.dart';
 import '../../data/models/expense.dart';
 import '../../state/app_providers.dart';
 import '../../widgets/gradient_card.dart';
@@ -11,7 +11,7 @@ import '../../widgets/responsive_body.dart';
 import '../../widgets/section_card.dart';
 import '../share/share_card_screen.dart';
 
-final _fmt = NumberFormat.currency(symbol: '₹', decimalDigits: 0);
+final _fmt = moneyFmt;
 
 class WrappedScreen extends ConsumerStatefulWidget {
   const WrappedScreen({super.key});
