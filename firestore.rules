@@ -6,8 +6,14 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Ownership + verified email. Password accounts must have a verified
+    // email (the app gates this in UI, but rules must enforce it too — S4);
+    // Google/other federated providers arrive pre-verified.
     function owner(userId) {
-      return request.auth != null && request.auth.uid == userId;
+      return request.auth != null
+          && request.auth.uid == userId
+          && (request.auth.token.firebase.sign_in_provider != 'password'
+              || request.auth.token.email_verified == true);
     }
     function strOk(v, max) {
       return v is string && v.size() <= max;
@@ -84,9 +90,18 @@ service cloud.firestore {
           && strOk(request.resource.data.categoryId, 40);
       }
 
-      // Worked-minutes / stats maps and any future per-user state docs.
+      // Per-user state docs — enumerated, shape-checked (S3). 'worked' is a
+      // map of day-key → minutes (size-capped ≈ 2 years of days); 'stats'
+      // holds small counters. Unknown doc IDs are denied (fail closed).
       match /state/{doc} {
-        allow read, write: if owner(userId);
+        allow read, delete: if owner(userId);
+        allow write: if owner(userId)
+          && (
+            (doc == 'worked' && request.resource.data.size() <= 800)
+            || (doc == 'stats'
+                && request.resource.data.size() <= 8
+                && numOk(request.resource.data.reclaimedMinutes))
+          );
       }
     }
   }

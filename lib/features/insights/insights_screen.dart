@@ -256,7 +256,8 @@ class _LifeEnergyCard extends StatelessWidget {
             AspectRatio(
               aspectRatio: 1.25,
               child: CustomPaint(
-                painter: _ScatterPainter(pts, maxTime),
+                painter:
+                    _ScatterPainter(pts, maxTime, AppColors.border(context)),
               ),
             ),
             const SizedBox(height: 10),
@@ -345,13 +346,14 @@ class _Legend extends StatelessWidget {
 class _ScatterPainter extends CustomPainter {
   final List<_Point> pts;
   final double maxTime;
-  const _ScatterPainter(this.pts, this.maxTime);
+  final Color gridColor; // theme-aware, passed from build (painters lack context)
+  const _ScatterPainter(this.pts, this.maxTime, this.gridColor);
 
   @override
   void paint(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final grid = Paint()
-      ..color = AppColors.darkBorder.withValues(alpha: 0.6)
+      ..color = gridColor.withValues(alpha: 0.6)
       ..strokeWidth = 1;
 
     // Quadrant tints: bottom-right (high time, low joy) = vampire zone.
@@ -399,7 +401,7 @@ class _ScatterPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_ScatterPainter old) =>
-      old.pts != pts || old.maxTime != maxTime;
+      old.pts != pts || old.maxTime != maxTime || old.gridColor != gridColor;
 }
 
 class _Bar extends StatelessWidget {
@@ -434,7 +436,7 @@ class _Bar extends StatelessWidget {
           child: LinearProgressIndicator(
             value: ratio.clamp(0, 1).toDouble(),
             minHeight: 8,
-            backgroundColor: AppColors.darkBorder,
+            backgroundColor: AppColors.border(context),
             valueColor: AlwaysStoppedAnimation(color),
           ),
         ),

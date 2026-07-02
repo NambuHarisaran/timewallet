@@ -158,7 +158,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         const SizedBox(height: 8),
         Text(
           'TimeWallet turns money into the hours of life it really costs you.',
-          style: t.bodyLarge?.copyWith(color: AppColors.darkMuted, height: 1.4),
+          style: t.bodyLarge
+              ?.copyWith(color: AppColors.muted(context), height: 1.4),
         ),
         const SizedBox(height: 24),
         Text('Where does your money come from?', style: t.titleMedium),
@@ -186,6 +187,21 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     ? 'Average monthly income (₹)'
                     : 'Monthly income (₹)',
           ),
+        const SizedBox(height: 8),
+        // Income is sensitive — say up front that it stays private. Anxiety
+        // here is a real drop-off point for first-time users.
+        Row(
+          children: [
+            Icon(Icons.lock_outline, size: 14, color: AppColors.muted(context)),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                'Private to your account. Never shared, never shown to anyone.',
+                style: t.bodySmall?.copyWith(color: AppColors.muted(context)),
+              ),
+            ),
+          ],
+        ),
         if (!_isAllowance) ...[
           const SizedBox(height: 12),
           _miniSlider('Work days / week', _daysPerWeek, 1, 7, 6,
@@ -215,7 +231,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         Text('A little about you', style: t.displayLarge),
         const SizedBox(height: 8),
         Text('Helps us tailor what you see. All optional except your role.',
-            style: t.bodyLarge?.copyWith(color: AppColors.darkMuted)),
+            style: t.bodyLarge?.copyWith(color: AppColors.muted(context))),
         const SizedBox(height: 24),
         TextField(
           controller: _name,
@@ -450,7 +466,7 @@ class _ProgressDots extends StatelessWidget {
             width: active ? 24 : 8,
             height: 8,
             decoration: BoxDecoration(
-              color: active ? AppColors.money : AppColors.darkBorder,
+              color: active ? AppColors.money : AppColors.border(context),
               borderRadius: BorderRadius.circular(4),
             ),
           );

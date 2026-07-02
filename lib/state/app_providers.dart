@@ -113,6 +113,7 @@ final streakProvider = Provider<int>((ref) {
   final worked = ref.watch(workedProvider).asData?.value ?? const {};
   if (worked.isEmpty) return 0;
   final startHour = ref.watch(profileOrDefaultProvider).workDayStartHour;
+  ref.watch(minuteTickProvider); // midnight rollover (U14)
   var streak = 0;
   var day = DateTime.now().subtract(Duration(hours: startHour));
   // Allow the streak to stand if today isn't logged yet but yesterday was.
@@ -130,7 +131,14 @@ final streakProvider = Provider<int>((ref) {
 // ---------------------------------------------------------------------------
 // Derived
 // ---------------------------------------------------------------------------
+
+/// Ticks once a minute so day-scoped providers re-evaluate DateTime.now() —
+/// an app left open across midnight rolls over to the new day (U14).
+final minuteTickProvider = StreamProvider<int>(
+    (ref) => Stream<int>.periodic(const Duration(minutes: 1), (i) => i));
+
 final todaySpendProvider = Provider<double>((ref) {
+  ref.watch(minuteTickProvider); // midnight rollover
   final today = dayKey();
   final list = ref.watch(expensesProvider).asData?.value ?? const [];
   return list
@@ -145,6 +153,7 @@ final heldItemsProvider = Provider<List<Expense>>((ref) {
 
 /// Total real spend in the current calendar month (budget mode).
 final monthSpendProvider = Provider<double>((ref) {
+  ref.watch(minuteTickProvider); // month rollover (U14)
   final now = DateTime.now();
   final list = ref.watch(expensesProvider).asData?.value ?? const [];
   return list
@@ -156,6 +165,7 @@ final monthSpendProvider = Provider<double>((ref) {
 });
 
 final workedTodayProvider = Provider<double>((ref) {
+  ref.watch(minuteTickProvider); // midnight rollover (U14)
   final map = ref.watch(workedProvider).asData?.value ?? const {};
   final startHour = ref.watch(profileOrDefaultProvider).workDayStartHour;
   return map[workDayKey(startHour)] ?? 0;
@@ -233,7 +243,10 @@ class AppActions {
     await _log(ActivityType.profileUpdated, 'Profile updated');
   }
 
-  Future<Expense> addExpense({
+  /// Builds and persists an expense. The [expense] is returned immediately
+  /// (offline-first: the write may only ack after sync); [done] lets callers
+  /// surface a genuine write failure and enables instant Undo by id.
+  ({Expense expense, Future<void> done}) addExpenseTracked({
     required double amount,
     required String categoryId,
     required Mood mood,
@@ -241,7 +254,7 @@ class AppActions {
     required double timeCostMinutes,
     bool hold = false,
     String? note,
-  }) async {
+  }) {
     final trimmed = note?.trim();
     final e = Expense(
       id: _uuid.v4(),
@@ -254,17 +267,41 @@ class AppActions {
       heldUntil: hold ? DateTime.now().add(const Duration(hours: 24)) : null,
       note: (trimmed == null || trimmed.isEmpty) ? null : trimmed,
     );
-    await _b.upsertExpense(e);
-    final cat = ExpenseCategory.byId(categoryId);
-    final hasNote = trimmed != null && trimmed.isNotEmpty;
-    await _log(
-      hold ? ActivityType.expenseHeld : ActivityType.expenseAdded,
-      hold ? 'Put on 24h hold' : 'Added expense',
-      subtitle: hasNote ? '${cat.label} · $trimmed' : cat.label,
+    final done = () async {
+      await _b.upsertExpense(e);
+      final cat = ExpenseCategory.byId(categoryId);
+      final hasNote = trimmed != null && trimmed.isNotEmpty;
+      await _log(
+        hold ? ActivityType.expenseHeld : ActivityType.expenseAdded,
+        hold ? 'Put on 24h hold' : 'Added expense',
+        subtitle: hasNote ? '${cat.label} · $trimmed' : cat.label,
+        amount: amount,
+        refId: e.id,
+      );
+    }();
+    return (expense: e, done: done);
+  }
+
+  Future<Expense> addExpense({
+    required double amount,
+    required String categoryId,
+    required Mood mood,
+    required NeedWant needWant,
+    required double timeCostMinutes,
+    bool hold = false,
+    String? note,
+  }) async {
+    final r = addExpenseTracked(
       amount: amount,
-      refId: e.id,
+      categoryId: categoryId,
+      mood: mood,
+      needWant: needWant,
+      timeCostMinutes: timeCostMinutes,
+      hold: hold,
+      note: note,
     );
-    return e;
+    await r.done;
+    return r.expense;
   }
 
   Future<void> confirmHeld(Expense e) async {
@@ -388,6 +425,21 @@ class AppActions {
   /// Wipes all Firestore data, then deletes the auth account. Returns null on
   /// success or a user-facing message on failure (e.g. needs recent login).
   Future<String?> deleteAccountAndData() async {
+    final auth = _ref.read(authServiceProvider);
+    final user = auth.current;
+    if (user == null) return 'Not signed in.';
+
+    // Firebase only allows account deletion after a RECENT sign-in. Check
+    // that BEFORE wiping: otherwise the wipe succeeds, delete() throws
+    // requires-recent-login, and the user signs back into an empty account —
+    // irreversible data loss from a normal auth condition (S2).
+    final last = user.metadata.lastSignInTime;
+    if (last == null ||
+        DateTime.now().difference(last) > const Duration(minutes: 5)) {
+      await auth.signOut();
+      return 'For security, sign in again, then delete your account.';
+    }
+
     try {
       await _b.wipeAllData();
     } catch (_) {
@@ -395,9 +447,8 @@ class AppActions {
       // the user can never reach again.
       return 'Could not clear your data — check your connection and try again.';
     }
-    final auth = _ref.read(authServiceProvider);
     try {
-      await auth.current?.delete();
+      await user.delete();
       return null;
     } on FirebaseAuthException catch (e) {
       if (e.code == 'requires-recent-login') {

@@ -112,6 +112,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
               const SizedBox(height: 12),
               TextField(
                 controller: title,
+                onChanged: (_) => setSheet(() {}),
                 decoration: const InputDecoration(labelText: 'What for?'),
               ),
               const SizedBox(height: 12),
@@ -119,21 +120,34 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                 controller: amount,
                 keyboardType: TextInputType.number,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                onChanged: (_) => setSheet(() {}),
                 decoration: const InputDecoration(
                     labelText: 'Target amount', prefixText: '₹ '),
               ),
               const SizedBox(height: 20),
+              // Disabled until valid — no silent no-op taps (U4). NOT awaited:
+              // offline-first writes only ack after sync; instead a late
+              // failure surfaces on the app messenger (U5).
               FilledButton(
-                onPressed: () {
-                  final amt = double.tryParse(amount.text) ?? 0;
-                  if (title.text.trim().isEmpty || amt <= 0) return;
-                  ref.read(appActionsProvider).addGoal(
-                        title: title.text.trim(),
-                        emoji: emoji,
-                        amount: amt,
-                      );
-                  Navigator.pop(context);
-                },
+                onPressed: (title.text.trim().isEmpty ||
+                        (double.tryParse(amount.text) ?? 0) <= 0)
+                    ? null
+                    : () {
+                        final messenger = ScaffoldMessenger.of(context);
+                        ref
+                            .read(appActionsProvider)
+                            .addGoal(
+                              title: title.text.trim(),
+                              emoji: emoji,
+                              amount: double.tryParse(amount.text) ?? 0,
+                            )
+                            .catchError((_) {
+                          messenger.showSnackBar(const SnackBar(
+                              content: Text(
+                                  "Couldn't save the goal — check your connection and try again.")));
+                        });
+                        Navigator.pop(context);
+                      },
                 child: const Text('Create goal'),
               ),
             ],
@@ -234,7 +248,13 @@ class _NavItem extends StatelessWidget {
     final muted = Theme.of(context).brightness == Brightness.dark
         ? AppColors.darkMuted
         : AppColors.lightMuted;
-    return GestureDetector(
+    // Semantics: custom nav is GestureDetector-based, so announce it as a
+    // selectable tab for screen readers (U2).
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: '$label tab',
+      child: GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: AnimatedContainer(
@@ -268,6 +288,7 @@ class _NavItem extends StatelessWidget {
             ],
           ],
         ),
+      ),
       ),
     );
   }

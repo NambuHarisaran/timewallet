@@ -92,6 +92,7 @@ class ProfileScreen extends ConsumerWidget {
                 ),
                 IconButton(
                   icon: const Icon(Icons.edit_outlined),
+                  tooltip: 'Edit profile',
                   onPressed: () => Navigator.of(context).push(MaterialPageRoute(
                       builder: (_) => const EditProfileScreen())),
                 ),
@@ -151,7 +152,63 @@ class ProfileScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 16),
+          // Grouped into scannable sections (U8): Learn / Your money /
+          // Settings / Account — one entry per destination.
           SectionCard(
+            title: 'LEARN',
+            child: Column(
+              children: [
+                _tile(context, Icons.help_outline, 'How it works',
+                    'Replay the feature walkthrough', const WalkthroughScreen()),
+                const Divider(),
+                _tile(context, Icons.menu_book_outlined, 'What the words mean',
+                    'Plain-language glossary of every term',
+                    const GlossaryScreen()),
+                const Divider(),
+                _tile(context, Icons.emoji_events_outlined, 'Achievements',
+                    'Life reclaimed by skipping wants',
+                    const AchievementsScreen()),
+                const Divider(),
+                _tile(context, Icons.auto_awesome_outlined, 'Your Wrapped',
+                    'Your money→time recap', const WrappedScreen()),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          SectionCard(
+            title: 'YOUR MONEY',
+            child: Column(
+              children: [
+                _tile(context, Icons.receipt_long_outlined, 'All expenses',
+                    'Monitor & delete your spending', const ExpensesScreen()),
+                const Divider(),
+                _tile(context, Icons.insights_outlined, 'Insights',
+                    'Spending trends & breakdowns', const InsightsScreen()),
+                const Divider(),
+                _tile(context, Icons.pie_chart_outline, 'Category budgets',
+                    'Set monthly limits per category', const BudgetsScreen()),
+                const Divider(),
+                _tile(context, Icons.subscriptions_outlined, 'Subscriptions',
+                    'Track recurring costs as work-time',
+                    const RecurringScreen()),
+                const Divider(),
+                _tile(context, Icons.history, 'Activity log',
+                    'Your recent expenses, work & investments',
+                    const HistoryScreen()),
+                const Divider(),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.copy_outlined),
+                  title: const Text('Export expenses (CSV)'),
+                  subtitle: const Text('Copy CSV to clipboard for backup'),
+                  onTap: () => _exportCsv(context, ref),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          SectionCard(
+            title: 'SETTINGS',
             child: Column(
               children: [
                 SwitchListTile(
@@ -171,112 +228,8 @@ class ProfileScreen extends ConsumerWidget {
                       ref.read(dailyReminderProvider.notifier).set(v),
                 ),
                 const Divider(),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.help_outline),
-                  title: const Text('How it works'),
-                  subtitle: const Text('Replay the feature walkthrough'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => const WalkthroughScreen())),
-                ),
-                const Divider(),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.menu_book_outlined),
-                  title: const Text('What the words mean'),
-                  subtitle: const Text('Plain-language glossary of every term'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => const GlossaryScreen())),
-                ),
-                const Divider(),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.emoji_events_outlined),
-                  title: const Text('Achievements'),
-                  subtitle: const Text('Life reclaimed by skipping wants'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => const AchievementsScreen())),
-                ),
-                const Divider(),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.receipt_long_outlined),
-                  title: const Text('All expenses'),
-                  subtitle: const Text('Monitor & delete your spending'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => const ExpensesScreen())),
-                ),
-                const Divider(),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.insights_outlined),
-                  title: const Text('Insights'),
-                  subtitle: const Text('Spending trends & breakdowns'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => const InsightsScreen())),
-                ),
-                const Divider(),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.auto_awesome_outlined),
-                  title: const Text('Your Wrapped'),
-                  subtitle: const Text('Your money→time recap'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => const WrappedScreen())),
-                ),
-                const Divider(),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.pie_chart_outline),
-                  title: const Text('Category budgets'),
-                  subtitle: const Text('Set monthly limits per category'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => const BudgetsScreen())),
-                ),
-                const Divider(),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.subscriptions_outlined),
-                  title: const Text('Subscriptions'),
-                  subtitle: const Text('Track recurring costs as work-time'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => const RecurringScreen())),
-                ),
-                const Divider(),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.receipt_long_outlined),
-                  title: const Text('Activity log'),
-                  subtitle: const Text('Your recent expenses, work & investments'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => const HistoryScreen())),
-                ),
-                const Divider(),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.copy_outlined),
-                  title: const Text('Export expenses (CSV)'),
-                  subtitle: const Text('Copy CSV to clipboard for backup'),
-                  onTap: () => _exportCsv(context, ref),
-                ),
-                const Divider(),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.tune),
-                  title: const Text('Edit profile & income'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => const EditProfileScreen())),
-                ),
+                _tile(context, Icons.tune, 'Edit profile & income', null,
+                    const EditProfileScreen()),
                 const Divider(),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
@@ -286,37 +239,57 @@ class ProfileScreen extends ConsumerWidget {
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => _resetSalary(context, ref),
                 ),
-                const Divider(),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          SectionCard(
+            title: 'ACCOUNT',
+            child: Column(
+              children: [
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.logout, color: AppColors.warn),
                   title: const Text('Sign out'),
                   onTap: () => ref.read(authServiceProvider).signOut(),
                 ),
+                const Divider(),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading:
+                      const Icon(Icons.delete_forever, color: AppColors.warn),
+                  title: const Text('Delete account'),
+                  subtitle:
+                      const Text('Permanently erase all your data and account'),
+                  onTap: () => _deleteAccount(context, ref),
+                ),
               ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          // Danger zone
-          SectionCard(
-            child: ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.delete_forever, color: AppColors.warn),
-              title: const Text('Delete account'),
-              subtitle:
-                  const Text('Permanently erase all your data and account'),
-              onTap: () => _deleteAccount(context, ref),
             ),
           ),
           const SizedBox(height: 12),
           Center(child: Text(email, style: t.labelSmall)),
           const SizedBox(height: 8),
-          Center(child: Text('TimeWallet · v0.1 MVP', style: t.labelSmall)),
+          // Keep in sync with pubspec.yaml `version:` (U9).
+          Center(child: Text('TimeWallet · v1.0.0', style: t.labelSmall)),
           ],
         ),      // ListView
       ),        // ContentWidth
     ),          // SafeArea
   );            // Scaffold
+  }
+
+  /// Standard navigation tile — one look for every destination (U8).
+  Widget _tile(BuildContext context, IconData icon, String title,
+      String? subtitle, Widget destination) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(icon),
+      title: Text(title),
+      subtitle: subtitle == null ? null : Text(subtitle),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => Navigator.of(context)
+          .push(MaterialPageRoute(builder: (_) => destination)),
+    );
   }
 
   Future<void> _resetSalary(BuildContext context, WidgetRef ref) async {
@@ -346,23 +319,46 @@ class ProfileScreen extends ConsumerWidget {
   }
 
   Future<void> _deleteAccount(BuildContext context, WidgetRef ref) async {
+    // Destructive + irreversible → require the user to type DELETE (U3).
+    final ctrl = TextEditingController();
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete account?'),
-        content: const Text(
-            'This permanently erases your profile, expenses, goals, holdings '
-            'and history, then deletes your account. This cannot be undone.'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.warn),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete'),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialog) => AlertDialog(
+          title: const Text('Delete account?'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                  'This permanently erases your profile, expenses, goals, '
+                  'holdings and history, then deletes your account. This '
+                  'cannot be undone.'),
+              const SizedBox(height: 16),
+              TextField(
+                controller: ctrl,
+                autofocus: true,
+                textCapitalization: TextCapitalization.characters,
+                onChanged: (_) => setDialog(() {}),
+                decoration: const InputDecoration(
+                  labelText: 'Type DELETE to confirm',
+                ),
+              ),
+            ],
           ),
-        ],
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel')),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: AppColors.warn),
+              onPressed: ctrl.text.trim().toUpperCase() == 'DELETE'
+                  ? () => Navigator.pop(ctx, true)
+                  : null,
+              child: const Text('Delete forever'),
+            ),
+          ],
+        ),
       ),
     );
     if (ok != true || !context.mounted) return;

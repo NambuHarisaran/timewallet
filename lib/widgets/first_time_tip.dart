@@ -70,15 +70,15 @@ class _FirstTimeTipState extends ConsumerState<FirstTimeTip> {
                           ?.copyWith(fontWeight: FontWeight.w700)),
                   const SizedBox(height: 2),
                   Text(widget.body,
-                      style: t.bodySmall
-                          ?.copyWith(color: AppColors.darkMuted, height: 1.35)),
+                      style: t.bodySmall?.copyWith(
+                          color: AppColors.muted(context), height: 1.35)),
                 ],
               ),
             ),
             IconButton(
               visualDensity: VisualDensity.compact,
               icon: const Icon(Icons.close, size: 18),
-              color: AppColors.darkMuted,
+              color: AppColors.muted(context),
               onPressed: _dismiss,
               tooltip: 'Got it',
             ),

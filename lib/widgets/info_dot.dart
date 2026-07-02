@@ -45,7 +45,7 @@ class InfoDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = color ?? AppColors.darkMuted;
+    final c = color ?? AppColors.muted(context);
     return InkResponse(
       onTap: () => _show(context),
       radius: 22,

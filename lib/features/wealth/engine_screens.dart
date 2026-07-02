@@ -403,7 +403,7 @@ class _HealthState extends ConsumerState<FinancialHealthScreen> {
                 slices: [
                   DonutSlice('score', r.score.toDouble(), gradeColor),
                   DonutSlice('rest', (100 - r.score).toDouble(),
-                      AppColors.darkBorder),
+                      AppColors.border(context)),
                 ],
               ),
               const SizedBox(height: 8),
@@ -422,7 +422,7 @@ class _HealthState extends ConsumerState<FinancialHealthScreen> {
                 _factorBar(context, f),
                 const SizedBox(height: 14),
               ],
-              Divider(color: AppColors.darkBorder),
+              Divider(color: AppColors.border(context)),
               const SizedBox(height: 6),
               Row(
                 children: [
@@ -497,7 +497,7 @@ class _HealthState extends ConsumerState<FinancialHealthScreen> {
           child: LinearProgressIndicator(
             value: f.score / 100,
             minHeight: 8,
-            backgroundColor: AppColors.darkBorder,
+            backgroundColor: AppColors.border(context),
             valueColor: AlwaysStoppedAnimation(c),
           ),
         ),

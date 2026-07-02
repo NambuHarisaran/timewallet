@@ -47,13 +47,22 @@ android {
 
     buildTypes {
         release {
+            // No silent debug-signing fallback (S7): when key.properties is
+            // missing the signing config stays null and the release build
+            // FAILS at the signing step instead of shipping debug-signed.
+            // (Can't error() here — this block also runs for debug builds.)
             signingConfig = if (keyPropertiesFile.exists()) {
                 signingConfigs.getByName("release")
             } else {
-                signingConfigs.getByName("debug")
+                null
             }
-            isMinifyEnabled = false
-            isShrinkResources = false
+            // R8 shrinking + obfuscation for release (S7).
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 }

@@ -42,7 +42,6 @@ dependencies:
   firebase_core: ^4.11.0
   firebase_auth: ^6.5.4
   cloud_firestore: ^6.6.0
-  http: ^1.2.0
   flutter_local_notifications: ^18.0.1
   google_sign_in: ^6.2.2
   # On-device receipt OCR (offline, no API key, no upload).

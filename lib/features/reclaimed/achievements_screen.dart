@@ -97,7 +97,7 @@ class AchievementsScreen extends ConsumerWidget {
                           ? 0
                           : (reclaimedDays / next.days).clamp(0, 1).toDouble(),
                       minHeight: 10,
-                      backgroundColor: AppColors.darkBorder,
+                      backgroundColor: AppColors.border(context),
                       valueColor:
                           const AlwaysStoppedAnimation(AppColors.positive),
                     ),

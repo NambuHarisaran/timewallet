@@ -124,7 +124,8 @@ class _WalkthroughScreenState extends State<WalkthroughScreen> {
                   width: active ? 24 : 8,
                   height: 8,
                   decoration: BoxDecoration(
-                    color: active ? AppColors.accent : AppColors.darkBorder,
+                    color:
+                        active ? AppColors.accent : AppColors.border(context),
                     borderRadius: BorderRadius.circular(4),
                   ),
                 );

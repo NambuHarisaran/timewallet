@@ -20,10 +20,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _password = TextEditingController();
   final _confirm = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-  // Signup is the default entry point; users toggle to "Log in".
+  // Signup is the default for brand-new installs, but returning users
+  // shouldn't have to toggle every session — remember the last mode (U12).
+  static const _modeKey = 'lastAuthModeSignUp';
   bool _isSignUp = true;
   bool _busy = false;
   bool _obscure = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _isSignUp = ref.read(sharedPrefsProvider).getBool(_modeKey) ?? true;
+  }
+
+  void _setMode(bool signUp) {
+    ref.read(sharedPrefsProvider).setBool(_modeKey, signUp);
+    setState(() => _isSignUp = signUp);
+  }
 
   @override
   void dispose() {
@@ -263,9 +276,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         style: t.bodyMedium,
                       ),
                       TextButton(
-                        onPressed: _busy
-                            ? null
-                            : () => setState(() => _isSignUp = !_isSignUp),
+                        onPressed: _busy ? null : () => _setMode(!_isSignUp),
                         child: Text(_isSignUp ? 'Log in' : 'Sign up'),
                       ),
                     ],

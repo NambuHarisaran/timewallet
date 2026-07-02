@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -75,9 +77,13 @@ class DashboardScreen extends ConsumerWidget {
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () async {
-            // Data is live via Firestore streams; the pull is just for tactile
-            // feedback / a moment of "something happened".
-            await Future<void>.delayed(const Duration(milliseconds: 400));
+            // Data is live via Firestore streams. Make the pull truthful (U15):
+            // re-check auth freshness and re-evaluate the stream providers so
+            // "today" rolls over if the app sat open across midnight.
+            await ref.read(authServiceProvider).reloadUser();
+            ref.invalidate(expensesProvider);
+            ref.invalidate(workedProvider);
+            await Future<void>.delayed(const Duration(milliseconds: 300));
           },
           child: ContentWidth(
             child: ListView(
@@ -393,14 +399,21 @@ class DashboardScreen extends ConsumerWidget {
             ),
           ),
         const SizedBox(width: 10),
-        InkWell(
-          borderRadius: BorderRadius.circular(24),
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const InsightsScreen()),
-          ),
-          child: const CircleAvatar(
-            backgroundColor: AppColors.money,
-            child: Icon(Icons.insights, color: Colors.white, size: 20),
+        Semantics(
+          button: true,
+          label: 'Spending insights',
+          child: Tooltip(
+            message: 'Spending insights',
+            child: InkWell(
+              borderRadius: BorderRadius.circular(24),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const InsightsScreen()),
+              ),
+              child: const CircleAvatar(
+                backgroundColor: AppColors.money,
+                child: Icon(Icons.insights, color: Colors.white, size: 20),
+              ),
+            ),
           ),
         ),
       ],
@@ -430,35 +443,46 @@ class DashboardScreen extends ConsumerWidget {
     final ctrl = TextEditingController();
     showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Log custom hours'),
-        content: TextField(
-          controller: ctrl,
-          autofocus: true,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          inputFormatters: [
-            FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-          ],
-          decoration: const InputDecoration(
-            labelText: 'Hours worked',
-            hintText: 'e.g. 2.5',
-            suffixText: 'h',
-          ),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          FilledButton(
-            onPressed: () {
-              final hours = double.tryParse(ctrl.text) ?? 0;
-              if (hours > 0) {
-                ref.read(appActionsProvider).logWork(hours * 60);
-              }
-              Navigator.pop(ctx);
-            },
-            child: const Text('Log'),
-          ),
-        ],
+      // Log stays disabled until the input parses > 0 — an invalid entry can
+      // no longer be swallowed by a silent close (U4).
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialog) {
+          final hours = double.tryParse(ctrl.text) ?? 0;
+          return AlertDialog(
+            title: const Text('Log custom hours'),
+            content: TextField(
+              controller: ctrl,
+              autofocus: true,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+              ],
+              onChanged: (_) => setDialog(() {}),
+              decoration: InputDecoration(
+                labelText: 'Hours worked',
+                hintText: 'e.g. 2.5',
+                suffixText: 'h',
+                errorText: ctrl.text.isNotEmpty && hours <= 0
+                    ? 'Enter a number above 0'
+                    : null,
+              ),
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cancel')),
+              FilledButton(
+                onPressed: hours <= 0
+                    ? null
+                    : () {
+                        ref.read(appActionsProvider).logWork(hours * 60);
+                        Navigator.pop(ctx);
+                      },
+                child: const Text('Log'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -528,14 +552,19 @@ class _Ticker extends StatelessWidget {
       tween: Tween(begin: 0, end: value),
       duration: const Duration(milliseconds: 800),
       curve: Curves.easeOut,
-      builder: (_, v, _) => Text(
-        formatter.format(v),
-        style: Theme.of(context).textTheme.displayLarge?.copyWith(
-              color: color,
-              fontSize: 58,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -2.0,
-            ),
+      // FittedBox: the 58px figure would clip at large system text scale (U2).
+      builder: (_, v, _) => FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          formatter.format(v),
+          maxLines: 1,
+          style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                color: color,
+                fontSize: 58,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -2.0,
+              ),
+        ),
       ),
     );
   }
@@ -581,14 +610,14 @@ class _BalanceCard extends ConsumerWidget {
                   ?.copyWith(fontSize: 34, color: color)),
           const SizedBox(height: 4),
           Text('${fmt.format(monthSpend)} spent of ${fmt.format(income)}',
-              style: t.bodyMedium?.copyWith(color: AppColors.darkMuted)),
+              style: t.bodyMedium?.copyWith(color: AppColors.muted(context))),
           const SizedBox(height: 10),
           ClipRRect(
             borderRadius: BorderRadius.circular(6),
             child: LinearProgressIndicator(
               value: spentPct,
               minHeight: 7,
-              backgroundColor: AppColors.darkBorder,
+              backgroundColor: AppColors.border(context),
               valueColor: AlwaysStoppedAnimation(color),
             ),
           ),
@@ -748,10 +777,12 @@ class _SpineHeader extends StatelessWidget {
             child: Text(subtitle,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: t.bodySmall?.copyWith(color: AppColors.darkMuted)),
+                style:
+                    t.bodySmall?.copyWith(color: AppColors.muted(context))),
           ),
           const SizedBox(width: 12),
-          Expanded(child: Container(height: 1, color: AppColors.darkBorder)),
+          Expanded(
+              child: Container(height: 1, color: AppColors.border(context))),
         ],
       ),
     );
@@ -874,7 +905,6 @@ class _StartHereCard extends ConsumerWidget {
     }
 
     final t = Theme.of(context).textTheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -932,9 +962,7 @@ class _StartHereCard extends ConsumerWidget {
               borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(
                 value: progress,
-                backgroundColor: isDark
-                    ? AppColors.darkBorder
-                    : Colors.grey.shade300,
+                backgroundColor: AppColors.border(context),
                 color: AppColors.accent,
                 minHeight: 6,
               ),
@@ -1024,17 +1052,23 @@ class _StepTile extends StatelessWidget {
                     ? AppColors.positive.withValues(alpha: 0.15)
                     : (onTap != null
                         ? AppColors.accent.withValues(alpha: 0.08)
-                        : AppColors.darkBorder),
+                        : AppColors.border(context)),
                 border: Border.all(
                   color: done
                       ? AppColors.positive
-                      : (onTap != null ? AppColors.accent : AppColors.darkBorder),
+                      : (onTap != null
+                          ? AppColors.accent
+                          : AppColors.border(context)),
                   width: 2,
                 ),
               ),
               child: done
                   ? const Icon(Icons.check, size: 14, color: AppColors.positive)
-                  : Icon(icon, size: 12, color: onTap != null ? AppColors.accent : AppColors.darkMuted),
+                  : Icon(icon,
+                      size: 12,
+                      color: onTap != null
+                          ? AppColors.accent
+                          : AppColors.muted(context)),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -1046,14 +1080,14 @@ class _StepTile extends StatelessWidget {
                     style: t.titleSmall?.copyWith(
                       fontWeight: FontWeight.w600,
                       decoration: done ? TextDecoration.lineThrough : null,
-                      color: done ? AppColors.darkMuted : null,
+                      color: done ? AppColors.muted(context) : null,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     subtitle,
                     style: t.bodySmall?.copyWith(
-                      color: AppColors.darkMuted,
+                      color: AppColors.muted(context),
                     ),
                   ),
                 ],
@@ -1063,7 +1097,7 @@ class _StepTile extends StatelessWidget {
               Icon(
                 Icons.arrow_forward_ios_rounded,
                 size: 14,
-                color: AppColors.darkMuted.withValues(alpha: 0.5),
+                color: AppColors.muted(context).withValues(alpha: 0.5),
               ),
           ],
         ),
@@ -1224,7 +1258,7 @@ class _BudgetsCard extends ConsumerWidget {
                     child: LinearProgressIndicator(
                       value: ratio.clamp(0, 1).toDouble(),
                       minHeight: 7,
-                      backgroundColor: AppColors.darkBorder,
+                      backgroundColor: AppColors.border(context),
                       valueColor: AlwaysStoppedAnimation(color),
                     ),
                   ),
@@ -1248,9 +1282,58 @@ String _holdLeft(DateTime? until) {
   return h > 0 ? '⏳ ${h}h ${m}m left' : '⏳ ${m}m left';
 }
 
-class _HeldList extends ConsumerWidget {
+class _HeldList extends ConsumerStatefulWidget {
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_HeldList> createState() => _HeldListState();
+}
+
+class _HeldListState extends ConsumerState<_HeldList> {
+  Timer? _tick;
+
+  @override
+  void initState() {
+    super.initState();
+    // The countdown text was frozen at build time (U7) — tick every minute
+    // so "⏳ 3h 12m left" stays honest while the screen is open.
+    _tick = Timer.periodic(
+        const Duration(minutes: 1), (_) => mounted ? setState(() {}) : null);
+  }
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    super.dispose();
+  }
+
+  /// Buys before the 24 h are up require an explicit "can't wait" confirm —
+  /// otherwise the mechanic undermines its own promise (U7).
+  Future<void> _buy(Expense e) async {
+    final stillHeld = e.isHeld;
+    if (stillHeld) {
+      final sure = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text("Can't wait?"),
+          content: Text(
+              'The hold ends ${_holdLeft(e.heldUntil).replaceFirst('⏳ ', '')} from now. '
+              'Buying early defeats the cool-down — sure?'),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Keep waiting')),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text("I can't wait")),
+          ],
+        ),
+      );
+      if (sure != true) return;
+    }
+    await ref.read(appActionsProvider).confirmHeld(e);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final held = ref.watch(heldItemsProvider);
     if (held.isEmpty) return const SizedBox.shrink();
     final profile = ref.watch(profileOrDefaultProvider);
@@ -1314,8 +1397,7 @@ class _HeldList extends ConsumerWidget {
                     child: const Text('Skip'),
                   ),
                   TextButton(
-                    onPressed: () =>
-                        ref.read(appActionsProvider).confirmHeld(e),
+                    onPressed: () => _buy(e),
                     child: const Text('Buy'),
                   ),
                 ],

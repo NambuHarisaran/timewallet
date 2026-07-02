@@ -1,11 +1,11 @@
 {
-    "name": "timewallet",
-    "short_name": "timewallet",
+    "name": "TimeWallet",
+    "short_name": "TimeWallet",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#14161C",
+    "theme_color": "#14161C",
+    "description": "See every rupee as the hours of your life it really costs.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

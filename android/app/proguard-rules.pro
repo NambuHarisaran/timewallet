@@ -14,3 +14,12 @@
 -dontwarn com.google.android.play.core.splitcompat.SplitCompatApplication
 -dontwarn com.google.android.play.core.splitinstall.**
 -dontwarn com.google.android.play.core.tasks.**
+
+# flutter_local_notifications (Gson reflection on its models)
+-keep class com.dexterous.** { *; }
+-keep class com.google.gson.** { *; }
+-keepattributes Signature, *Annotation*, EnclosingMethod, InnerClasses
+
+# ML Kit text recognition (on-device OCR)
+-keep class com.google.mlkit.** { *; }
+-dontwarn com.google.mlkit.**

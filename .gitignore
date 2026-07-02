@@ -51,3 +51,12 @@ app.*.map.json
 /android/key.properties
 /android/app/*.jks
 /android/app/*.keystore
+
+# Play signing-key export material — never commit (S1)
+output.zip
+pepk.jar
+*.pem
+*.der
+
+# Local screenshots / captures
+flutter_01.png

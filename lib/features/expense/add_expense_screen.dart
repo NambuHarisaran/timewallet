@@ -93,15 +93,24 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     final isFirstSpend =
         (ref.read(expensesProvider).asData?.value ?? const []).isEmpty;
 
-    ref.read(appActionsProvider).addExpense(
-          amount: _value,
-          categoryId: _categoryId,
-          mood: _mood,
-          needWant: _needWant,
-          timeCostMinutes: minutes,
-          hold: hold,
-          note: _note.text,
-        );
+    // NOT awaited (offline-first writes only ack after sync) — but a genuine
+    // failure, e.g. a rules rejection, surfaces on the app messenger (U5).
+    final appMessenger = ScaffoldMessenger.of(context);
+    final actions = ref.read(appActionsProvider);
+    final r = actions.addExpenseTracked(
+      amount: _value,
+      categoryId: _categoryId,
+      mood: _mood,
+      needWant: _needWant,
+      timeCostMinutes: minutes,
+      hold: hold,
+      note: _note.text,
+    );
+    r.done.catchError((_) {
+      appMessenger.showSnackBar(const SnackBar(
+          content: Text(
+              "Couldn't save that expense — check your connection and try again.")));
+    });
     HapticFeedback.mediumImpact();
 
     // Capture the app-level messenger/navigator before popping. ScaffoldMessenger
@@ -126,6 +135,19 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       messenger.showSnackBar(
         SnackBar(content: Text(reframe), duration: const Duration(seconds: 4)),
       );
+    } else {
+      // Mistakes shouldn't force a trip to the ledger — instant Undo.
+      final label = profile.tracksTime && minutes > 0
+          ? 'Added ₹${_value.toStringAsFixed(0)} — ${TimeFormat.hm(minutes, hoursPerDay: profile.hoursPerDay)} of life'
+          : 'Added ₹${_value.toStringAsFixed(0)}';
+      messenger.showSnackBar(SnackBar(
+        content: Text(hold ? 'On hold for 24h — decide tomorrow.' : label),
+        duration: const Duration(seconds: 5),
+        action: SnackBarAction(
+          label: 'Undo',
+          onPressed: () => actions.deleteExpense(r.expense.id),
+        ),
+      ));
     }
   }
 
@@ -263,9 +285,21 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     );
   }
 
+  static const _moodLabels = {
+    Mood.good: 'Feels good',
+    Mood.neutral: 'Feels neutral',
+    Mood.bad: 'Feels bad',
+  };
+
   Widget _moodChip(Mood m, IconData icon) {
     final active = m == _mood;
-    return GestureDetector(
+    // Semantics: raw GestureDetector circles are invisible to screen readers;
+    // announce as a selectable button (U2).
+    return Semantics(
+      button: true,
+      selected: active,
+      label: _moodLabels[m],
+      child: GestureDetector(
       onTap: () => setState(() => _mood = m),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
@@ -276,12 +310,14 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
               : Colors.transparent,
           shape: BoxShape.circle,
           border: Border.all(
-            color: active ? AppColors.money : AppColors.darkBorder,
+            color: active ? AppColors.money : AppColors.border(context),
             width: 2,
           ),
         ),
         child: Icon(icon,
-            size: 28, color: active ? AppColors.money : AppColors.darkMuted),
+            size: 28,
+            color: active ? AppColors.money : AppColors.muted(context)),
+      ),
       ),
     );
   }

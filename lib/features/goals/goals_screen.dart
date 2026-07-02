@@ -172,7 +172,7 @@ class _GoalTile extends ConsumerWidget {
             size: 72,
             stroke: 7,
             color: AppColors.money,
-            trackColor: AppColors.darkBorder,
+            trackColor: AppColors.border(context),
             center: Icon(goalIconFor(goal.emoji), color: AppColors.money),
           ),
           const SizedBox(width: 16),

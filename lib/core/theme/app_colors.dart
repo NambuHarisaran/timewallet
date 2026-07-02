@@ -43,4 +43,22 @@ class AppColors {
   static const Color glassDarkBorder = darkBorder;
   static const Color glassLight = lightSurface;
   static const Color glassLightBorder = lightBorder;
+
+  // ---- Theme-aware helpers (U1) ----
+  // Use these instead of darkMuted/darkBorder in widgets: hard-coding the
+  // dark tokens renders black bars / low-contrast grey in light mode.
+  static bool _isDark(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark;
+
+  static Color muted(BuildContext context) =>
+      _isDark(context) ? darkMuted : lightMuted;
+
+  static Color border(BuildContext context) =>
+      _isDark(context) ? darkBorder : lightBorder;
+
+  static Color surfaceAlt(BuildContext context) =>
+      _isDark(context) ? darkSurfaceAlt : lightSurfaceAlt;
+
+  static Color text(BuildContext context) =>
+      _isDark(context) ? darkText : lightText;
 }

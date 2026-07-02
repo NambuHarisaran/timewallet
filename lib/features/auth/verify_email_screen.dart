@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -16,6 +18,38 @@ class VerifyEmailScreen extends ConsumerStatefulWidget {
 
 class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
   bool _busy = false;
+  Timer? _poll;
+  Timer? _cooldownTick;
+  int _cooldown = 0; // seconds until resend is allowed again
+
+  @override
+  void initState() {
+    super.initState();
+    // Auto-poll (U6): the user taps the link in their mail app and comes
+    // back — advance without making them hunt for a button.
+    _poll = Timer.periodic(const Duration(seconds: 5), (_) => _silentCheck());
+  }
+
+  @override
+  void dispose() {
+    _poll?.cancel();
+    _cooldownTick?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _silentCheck() async {
+    if (_busy || !mounted) return;
+    try {
+      final auth = ref.read(authServiceProvider);
+      await auth.reloadUser();
+      if (auth.current?.emailVerified ?? false) {
+        _poll?.cancel();
+        ref.invalidate(authStateProvider);
+      }
+    } catch (_) {
+      // Network hiccup — next tick retries.
+    }
+  }
 
   void _toast(String m) {
     if (!mounted) return;
@@ -27,6 +61,14 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
     try {
       await ref.read(authServiceProvider).resendVerification();
       _toast('Verification email sent.');
+      // Cooldown (U6): repeated taps trigger Firebase too-many-requests.
+      setState(() => _cooldown = 30);
+      _cooldownTick?.cancel();
+      _cooldownTick = Timer.periodic(const Duration(seconds: 1), (t) {
+        if (!mounted) return t.cancel();
+        setState(() => _cooldown--);
+        if (_cooldown <= 0) t.cancel();
+      });
     } catch (e) {
       _toast(AuthService.describeError(e));
     } finally {
@@ -71,7 +113,8 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
                 textAlign: TextAlign.center, style: t.headlineMedium),
             const SizedBox(height: 8),
             Text(
-              'We sent a verification link to $email. Open it, then tap "I\'ve verified".',
+              'We sent a verification link to $email. Open it and come back — '
+              "we'll notice automatically.",
               textAlign: TextAlign.center,
               style: t.bodyMedium,
             ),
@@ -88,8 +131,9 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
             ),
             const SizedBox(height: 12),
             OutlinedButton(
-              onPressed: _busy ? null : _resend,
-              child: const Text('Resend email'),
+              onPressed: (_busy || _cooldown > 0) ? null : _resend,
+              child: Text(
+                  _cooldown > 0 ? 'Resend in ${_cooldown}s' : 'Resend email'),
             ),
             const SizedBox(height: 12),
             TextButton(

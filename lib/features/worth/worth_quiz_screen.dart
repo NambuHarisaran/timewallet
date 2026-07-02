@@ -189,7 +189,7 @@ class _WorthQuizState extends ConsumerState<WorthQuizScreen> {
               }).toList(),
             ),
             const SizedBox(height: 20),
-            if (ready) _verdictCard(t) else _hint(t),
+            if (ready) _verdictCard(t) else _hint(context, t),
             const SizedBox(height: 24),
           ],
         ),
@@ -224,14 +224,14 @@ class _WorthQuizState extends ConsumerState<WorthQuizScreen> {
     );
   }
 
-  Widget _hint(TextTheme t) {
+  Widget _hint(BuildContext context, TextTheme t) {
     final left = _questions.length - _answers.length;
     return Center(
       child: Text(
         _value <= 0
             ? 'Enter a price and answer the questions for a verdict.'
             : 'Answer $left more to see the verdict.',
-        style: t.bodyMedium?.copyWith(color: AppColors.darkMuted),
+        style: t.bodyMedium?.copyWith(color: AppColors.muted(context)),
         textAlign: TextAlign.center,
       ),
     );
