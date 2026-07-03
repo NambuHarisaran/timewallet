@@ -198,8 +198,8 @@ class _SalarySetupScreenState extends ConsumerState<SalarySetupScreen> {
           const SizedBox(height: 16),
           GradientCard(
             colors: _isAllowance
-                ? AppColors.auroraGreen
-                : AppColors.auroraMoney,
+                ? AppColors.heroPositive
+                : AppColors.heroNeutral,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

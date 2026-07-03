@@ -72,7 +72,7 @@ class _FutureYouState extends ConsumerState<FutureYouScreen> {
 
             // ---- Hero: the life bought back ----
             GradientCard(
-              colors: AppColors.auroraGreen,
+              colors: AppColors.heroPositive,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

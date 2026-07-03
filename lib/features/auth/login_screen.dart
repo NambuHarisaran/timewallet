@@ -7,6 +7,7 @@ import '../../services/auth_service.dart';
 import '../../state/app_providers.dart';
 import '../../widgets/responsive_body.dart';
 import '../../utils/browser_detector.dart' as detector;
+import 'login_demo_card.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -156,7 +157,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   const SizedBox(height: 6),
                   Text('See your money as time.',
                       textAlign: TextAlign.center, style: t.bodyMedium),
-                  const SizedBox(height: 36),
+                  const SizedBox(height: 24),
+                  const LoginDemoCard(),
+                  const SizedBox(height: 24),
                   TextFormField(
                     controller: _email,
                     keyboardType: TextInputType.emailAddress,

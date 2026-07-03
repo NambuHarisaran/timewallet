@@ -59,7 +59,7 @@ class AchievementsScreen extends ConsumerWidget {
         padding: const EdgeInsets.all(16),
         children: [
           GradientCard(
-            colors: AppColors.auroraGreen,
+            colors: AppColors.heroPositive,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

@@ -6,11 +6,11 @@ import '../core/theme/app_colors.dart';
 import '../core/theme/app_spacing.dart';
 import '../state/app_providers.dart';
 import 'dashboard/dashboard_screen.dart';
-import 'expense/add_expense_screen.dart';
+import 'expense/quick_add_sheet.dart';
 import 'goals/goals_screen.dart';
+import 'plan/plan_screen.dart';
 import 'profile/profile_screen.dart';
-import 'tools/tools_screen.dart';
-import 'wealth/wealth_screen.dart';
+import 'review/review_hub_screen.dart';
 
 class HomeShell extends ConsumerStatefulWidget {
   const HomeShell({super.key});
@@ -61,8 +61,8 @@ class _HomeShellState extends ConsumerState<HomeShell>
   late final List<Widget> _tabs = [
     DashboardScreen(onTab: _select),
     const GoalsScreen(),
-    const WealthScreen(),
-    const ToolsScreen(),
+    const PlanScreen(),
+    const ReviewHubScreen(),
     const ProfileScreen(),
   ];
 
@@ -73,8 +73,8 @@ class _HomeShellState extends ConsumerState<HomeShell>
   static const _items = [
     (Icons.home_rounded, 'Home'),
     (Icons.flag_rounded, 'Goals'),
-    (Icons.savings_rounded, 'Wealth'),
-    (Icons.calculate_rounded, 'Tools'),
+    (Icons.savings_rounded, 'Plan'),
+    (Icons.event_repeat_rounded, 'Review'),
     (Icons.person_rounded, 'Profile'),
   ];
 
@@ -88,9 +88,9 @@ class _HomeShellState extends ConsumerState<HomeShell>
       case 0:
         return FloatingActionButton.extended(
           heroTag: 'fab_expense',
-          onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const AddExpenseScreen()),
-          ),
+          // Quick-add sheet: amount + category in two taps; the full screen
+          // (note, scan, manual need/want) is one tap deeper (X2).
+          onPressed: () => showQuickAddSheet(context, ref),
           icon: const Icon(Icons.add),
           label: const Text('Add expense'),
         );

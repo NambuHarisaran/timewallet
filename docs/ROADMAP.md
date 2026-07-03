@@ -6,6 +6,14 @@
 
 ---
 
+## UX1 — Retention UI/UX upgrade, Phases A–E ✅ (2026-07-03, UNCOMMITTED)
+**Goal:** users like the app and come back weekly. Plan: `~/.claude/plans/peppy-zooming-noodle.md`. Zero new packages. analyze clean · 113/113 tests · web build OK · NOT device-verified.
+- **A** design-system + motion: `widgets/{skeleton,entrance,feature_tile}.dart` + `auth/login_demo_card.dart` (X1 pre-signup demo); GradientCard/SectionCard radius→`AppTheme.radiusCard` + theme-aware border (light-mode fix); celebrate palette→tokens (`AppColors.accentSoft`); **`aurora*`→`heroNeutral/heroPositive/heroWarn` token rename** (16 sites); deleted `Gap`+`Glows`; `pageTransitionsTheme` FadeForwards+Cupertino (never Zoom).
+- **B** dashboard IA: persona order (X3, `spendFirst`), net-today hero line, insight folded into SPENT card, share→header icon, `Entrance` stagger, `widgets/empty_preview.dart` (X9) on Insights+Goals empty states, `features/app_tabs.dart` consts.
+- **C** 2-tap capture (X2): `core/util/category_defaults.dart` + `expense/{expense_commit,quick_add_sheet}.dart`; add-expense drops mood, auto need/want, note under "More options"; FAB→quick-add sheet.
+- **D** weekly Life Receipt (F6 in-app half): `core/util/weekly_review.dart` (pure) + `features/review/{weekly_review_screen,review_prompt_card,review_hub_screen}.dart` + `weeklyReviewProvider`/`ReviewStateNotifier`; Sunday notif (id 4001; **budget id 3000→4000 collision fix**); analytics review events; mood write-back (`setExpenseMood`) feeds the Life-Energy matrix.
+- **E** nav merge (X5): Wealth+Tools→**Plan** tab (`features/plan/plan_screen.dart`, engines + calculators w/ show-all); freed slot→**Review** tab (`review_hub_screen.dart`). Deleted `tools_screen.dart`+`wealth_screen.dart`. Walkthrough copy updated.
+
 ## M1 — Hygiene & verified small defects ✅ (2026-07-02)
 **Goal:** zero-risk correctness/consistency fixes found in the code-quality audit. No feature changes.
 - **Q4** Shared currency formatter `lib/core/util/formatters.dart` (`moneyFmt`, en_IN) replacing 15 ad-hoc `NumberFormat.currency` sites → consistent lakh grouping app-wide.
@@ -25,7 +33,7 @@ Shipped as planned (CHANGELOG has the full entry): analytics service + typed eve
 Deviations: `reminderHour` lives in prefs (device-local), not the profile; first-session reminder prompt deferred into M6's review flow; all proactive notifs gated on the reminder opt-in. analyze clean · 82/82 · web build OK · **device verification pending** (checklist in CHANGELOG).
 
 ## M3 — Structural refactor (no behavior change)
-Q8 kit consolidation (calculators adopt `EngineSlider/EngineScaffold`) · Q9/Q10 shared income-form widget + rate-preview helper · X5 merge Wealth+Tools into one Plan tab (nav index map kept: reuse tab slot, redirect) · Q19 split dashboard_screen into `dashboard/cards/*.dart` · Q14 hide dead Invest filter · Q15 fold orphaned calculators · Q16 `CompactFilledButton`. **Risk:** wide-but-mechanical; do in 3 PR-sized commits, analyze+tests between each. **Rollback:** per-commit revert.
+**X5 (Wealth+Tools→Plan) DONE in UX1.** Remaining: Q8 kit consolidation (calculators adopt `EngineSlider/EngineScaffold`) · Q9/Q10 shared income-form widget + rate-preview helper · Q19 split `dashboard_screen.dart` into `dashboard/cards/*.dart` (still ~1400 lines; UX1 did the IA changes in-place, not the file split) · Q14 hide dead Invest filter · Q15 fold orphaned calculators · Q16 `CompactFilledButton`. **Risk:** wide-but-mechanical; do in PR-sized commits, analyze+tests between each. **Rollback:** per-commit revert.
 
 ## M4 — Test depth + CI
 In-memory `FakeBackend` implementing `DataBackend` · provider tests (todaySpend/monthSpend/streak/held) · widget tests: add-expense flow, dashboard empty→first-win, worth quiz verdict · CI adds `flutter build web` + coverage artifact (Q18) · expense stream month-window query (perf headroom).
@@ -34,7 +42,7 @@ In-memory `FakeBackend` implementing `DataBackend` · provider tests (todaySpend
 `RecurringExpense.nextRenewalDate` (additive field) · auto-post expense on renewal + T-3d alert (work-hours framing) · goal round-ups on each logged spend · reclaimed-hours→goal linkage. **DB:** additive fields only; rules update + deploy. **Risk:** double-posting → idempotency key = `recurringId+period`; unit-tested.
 
 ## M6 — Weekly Life Receipt + review (F6) — needs Defender exclusion (share_plus)
-Sunday local notif → receipt screen (existing Wrapped math, weekly window) → image render (RepaintBoundary→PNG) → share sheet · 60-sec review absorbs mood rating (removes mood from add-expense) · insights: MoM deltas, anomaly lines, month-end forecast (pure stats). **Risk:** share_plus native plugin on this machine (Defender) — exclusion first; caption-copy fallback stays.
+**In-app review DONE in UX1-D** (weekly window math `core/util/weekly_review.dart`, Sunday notif, 60-sec review absorbing mood via `setExpenseMood`, caption-copy share). **Remaining:** image render (RepaintBoundary→PNG) + share sheet (needs `Add-MpPreference` Defender exclusion for share_plus) · insights MoM deltas, anomaly lines, month-end forecast (pure stats). `WeeklyReviewData`/`buildWeeklyReview` is exactly the input the PNG renderer needs — no rework.
 
 ## M7 — Notification-listener auto-capture (F7) — needs Android SDK + device
 NotificationListenerService (Android) → parser (HDFC/SBI/ICICI/GPay/PhonePe/Paytm formats) → pending-spend inbox → swipe-confirm categorization. Policy-safe path (Play blocks READ_SMS — verified in PRODUCT_STRATEGY §4). Parser = pure Dart, unit-test-heavy; platform channel thin.

@@ -102,7 +102,7 @@ class _WrappedState extends ConsumerState<WrappedScreen> {
             ),
             const SizedBox(height: 16),
             GradientCard(
-              colors: AppColors.auroraViolet,
+              colors: AppColors.heroNeutral,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

@@ -9,8 +9,10 @@ import '../../core/util/formatters.dart';
 import '../../data/models/expense.dart';
 import '../../data/models/user_profile.dart';
 import '../../state/app_providers.dart';
+import '../../widgets/empty_preview.dart';
 import '../../widgets/responsive_body.dart';
 import '../../widgets/section_card.dart';
+import '../expense/add_expense_screen.dart';
 
 final _fmt = moneyFmt;
 
@@ -59,18 +61,23 @@ class InsightsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Insights')),
       body: spent.isEmpty
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.insights_outlined,
-                        size: 64, color: AppColors.money),
-                    const SizedBox(height: 16),
-                    Text('No spending to analyse yet', style: t.titleLarge),
-                  ],
-                ),
+          ? ResponsiveBody(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 16),
+                  EmptyPreview(
+                    title: 'LAST 7 DAYS',
+                    preview: const _FakeWeekBars(),
+                    cta: 'Add your first expense',
+                    onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => const AddExpenseScreen())),
+                  ),
+                  const SizedBox(height: 12),
+                  Text('Log a few expenses and this fills with your real week.',
+                      textAlign: TextAlign.center,
+                      style: t.bodyMedium),
+                ],
               ),
             )
           : ResponsiveBody(
@@ -150,6 +157,37 @@ class InsightsScreen extends ConsumerWidget {
                 ],
               ),
             ),
+    );
+  }
+}
+
+/// Greyed dummy bars behind the empty-state CTA — shows what the real week
+/// view becomes once expenses exist.
+class _FakeWeekBars extends StatelessWidget {
+  const _FakeWeekBars();
+  static const _heights = [40.0, 70.0, 30.0, 90.0, 55.0, 80.0, 45.0];
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 110,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          for (final h in _heights)
+            Expanded(
+              child: Container(
+                height: h,
+                margin: const EdgeInsets.symmetric(horizontal: 5),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceAlt(context),
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(6)),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

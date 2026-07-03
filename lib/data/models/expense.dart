@@ -53,11 +53,12 @@ class Expense {
 
   ExpenseCategory get category => ExpenseCategory.byId(categoryId);
 
-  Expense copyWith({DateTime? heldUntil, bool clearHold = false}) => Expense(
+  Expense copyWith({DateTime? heldUntil, bool clearHold = false, Mood? mood}) =>
+      Expense(
         id: id,
         amount: amount,
         categoryId: categoryId,
-        mood: mood,
+        mood: mood ?? this.mood,
         needWant: needWant,
         timeCostMinutes: timeCostMinutes,
         createdAt: createdAt,

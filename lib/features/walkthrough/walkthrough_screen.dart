@@ -14,22 +14,20 @@ class _Step {
 }
 
 const _steps = <_Step>[
-  _Step(Icons.hourglass_bottom, AppColors.auroraMoney, 'Money is time',
+  _Step(Icons.hourglass_bottom, AppColors.heroNeutral, 'Money is time',
       'Every rupee is shown as the work-time it costs you. ₹500 might be 1 hour of your life.'),
-  _Step(Icons.timer_outlined, AppColors.auroraMoney, 'Log your work',
+  _Step(Icons.timer_outlined, AppColors.heroNeutral, 'Log your work',
       'Tap "Log work time" on Home as you work. Beyond your daily hours becomes overtime — earned only if your overtime is paid. Night shifts that cross midnight count as one day.'),
-  _Step(Icons.payments_outlined, AppColors.auroraViolet, 'Add expenses',
+  _Step(Icons.payments_outlined, AppColors.heroNeutral, 'Add expenses',
       'Add what you spend and instantly see it in hours, not just rupees. Mark it Need or Want.'),
-  _Step(Icons.pause_circle_outline, AppColors.auroraViolet, 'Hold & reclaim',
+  _Step(Icons.pause_circle_outline, AppColors.heroNeutral, 'Hold & reclaim',
       'Put a "want" on a 24-hour hold. Skip it and you reclaim that work-time — it adds up.'),
-  _Step(Icons.flag_outlined, AppColors.auroraGreen, 'Goals in work-days',
+  _Step(Icons.flag_outlined, AppColors.heroPositive, 'Goals in work-days',
       'Set a goal and see how many work-days — and how much overtime per day — it takes to reach it.'),
-  _Step(Icons.savings_outlined, AppColors.auroraGreen, 'Plan your wealth',
-      'Six engines: asset allocation, a financial-health score, SWP income, a debt payoff engine, child-legacy and retirement planning.'),
-  _Step(Icons.calculate_outlined, AppColors.auroraTime, 'Tools that decide',
-      '"Worth it?" checks any price in work-time. Plus SIP, FD, inflation, and a financial-freedom countdown.'),
-  _Step(Icons.insights_outlined, AppColors.auroraTime, 'Insights & extras',
-      'Insights and your Wrapped recap, subscription audit, category budgets, and a full expense history — all in one place.'),
+  _Step(Icons.savings_outlined, AppColors.heroPositive, 'Plan the big decisions',
+      'The Plan tab holds seven planning engines (asset allocation, health score, SWP, debt, child-legacy, retirement) plus quick calculators — "Worth it?", SIP, FD, inflation and a financial-freedom countdown.'),
+  _Step(Icons.event_repeat_rounded, AppColors.heroNeutral, 'Review your week',
+      'Every Sunday your Life Receipt shows the week in hours — earned, spent, and reclaimed. The Review tab also holds your Wrapped recap, insights and achievements.'),
 ];
 
 /// Swipeable tour of every feature. Shown once after onboarding and replayable

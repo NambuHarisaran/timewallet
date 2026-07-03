@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 import '../core/time/duration_format.dart';
 import '../core/util/engagement.dart';
 import '../core/util/formatters.dart';
+import '../core/util/weekly_review.dart';
 import '../data/backend/data_backend.dart';
 import '../data/backend/firestore_backend.dart';
 import '../data/models/activity.dart';
@@ -384,7 +385,14 @@ class AppActions {
       await _b.addReclaimedMinutes(e.timeCostMinutes);
     }
     await _log(ActivityType.expenseSkipped, 'Skipped a held want',
-        subtitle: e.category.label);
+        subtitle: e.category.label, amount: e.amount);
+  }
+
+  /// Sets the mood on an existing expense (written from the weekly review,
+  /// which is where mood-tagging moved after the capture form was slimmed).
+  /// Fire-and-forget: like every other write, never awaited in the UI (U5).
+  Future<void> setExpenseMood(Expense e, Mood mood) async {
+    await _b.upsertExpense(e.copyWith(mood: mood));
   }
 
   Future<void> deleteExpense(String id) async {
@@ -644,6 +652,7 @@ class DailyReminderNotifier extends Notifier<bool> {
       }
     } else {
       await svc.disableDailyReminder();
+      await svc.cancelWeeklyReview();
     }
   }
 
@@ -660,10 +669,16 @@ class DailyReminderNotifier extends Notifier<bool> {
       subWorkDays:
           profile.engine.daysFor(ref.read(monthlyRecurringCostProvider)),
     );
-    await ref.read(notificationServiceProvider).scheduleDailyReminder(
-          hour: ref.read(reminderHourProvider),
-          body: body,
-        );
+    final svc = ref.read(notificationServiceProvider);
+    await svc.scheduleDailyReminder(
+      hour: ref.read(reminderHourProvider),
+      body: body,
+    );
+    // The weekly Life-Receipt nudge rides the same opt-in and refresh cycle.
+    await svc.scheduleWeeklyReview(
+      body: weeklyReviewMessage(ref.read(weeklyReviewProvider),
+          tracksTime: profile.tracksTime),
+    );
   }
 }
 
@@ -703,3 +718,65 @@ class ViewedTourNotifier extends Notifier<bool> {
 
 final viewedTourProvider =
     NotifierProvider<ViewedTourNotifier, bool>(ViewedTourNotifier.new);
+
+// ---------------------------------------------------------------------------
+// Weekly review ("Life Receipt") — the weekly retention ritual.
+// ---------------------------------------------------------------------------
+
+/// This-week (or last completed week) review numbers, recomputed from the live
+/// streams. Watches minuteTick so a week boundary rolls over if the app stays
+/// open.
+final weeklyReviewProvider = Provider<WeeklyReviewData>((ref) {
+  ref.watch(minuteTickProvider);
+  final expenses =
+      ref.watch(expensesProvider).asData?.value ?? const <Expense>[];
+  final worked =
+      ref.watch(workedProvider).asData?.value ?? const <String, double>{};
+  final activity =
+      ref.watch(activityProvider).asData?.value ?? const <ActivityLog>[];
+  final engine = ref.watch(profileOrDefaultProvider).engine;
+  final window = reviewWindow(DateTime.now());
+  return buildWeeklyReview(
+    expenses: expenses,
+    worked: worked,
+    activity: activity,
+    engine: engine,
+    window: window,
+    priorWindow: priorWindowOf(window),
+  );
+});
+
+/// Persisted state of the weekly review: which week was last marked done, and
+/// the per-week mood rating. Backs the north-star "Weekly Reviewed Users".
+class ReviewState {
+  final String? doneWeek;
+  const ReviewState(this.doneWeek);
+}
+
+class ReviewStateNotifier extends Notifier<ReviewState> {
+  static const _doneKey = 'review_done_week';
+  static String _moodKey(String weekKey) => 'review_mood_$weekKey';
+
+  @override
+  ReviewState build() =>
+      ReviewState(ref.read(sharedPrefsProvider).getString(_doneKey));
+
+  /// Marks [weekKey] reviewed — fires the north-star analytics event.
+  Future<void> markDone(String weekKey) async {
+    state = ReviewState(weekKey);
+    await ref.read(sharedPrefsProvider).setString(_doneKey, weekKey);
+    ref.read(analyticsServiceProvider).reviewComplete(weekKey: weekKey);
+  }
+
+  int? weekMood(String weekKey) =>
+      ref.read(sharedPrefsProvider).getInt(_moodKey(weekKey));
+
+  Future<void> setWeekMood(String weekKey, int moodIndex) async {
+    await ref.read(sharedPrefsProvider).setInt(_moodKey(weekKey), moodIndex);
+    // Nudge listeners (the screen rebuilds off this notifier).
+    state = ReviewState(state.doneWeek);
+  }
+}
+
+final reviewStateProvider =
+    NotifierProvider<ReviewStateNotifier, ReviewState>(ReviewStateNotifier.new);

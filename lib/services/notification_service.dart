@@ -22,7 +22,10 @@ class NotificationService {
   bool _inited = false;
 
   static const int _dailyId = 1001;
-  static const int _budgetId = 3000;
+  // Hold ids span 2000–3023 (hash & 0x3FF), so budget/weekly ids must sit
+  // ABOVE that range — 3000 used to collide with a hold.
+  static const int _budgetId = 4000;
+  static const int _weeklyId = 4001;
   // Hold ids live in their own range; hash keeps one id per expense so a
   // cancel always hits the matching schedule.
   static int _holdId(String expenseId) => 2000 + (expenseId.hashCode & 0x3FF);
@@ -103,6 +106,39 @@ class NotificationService {
     if (kIsWeb) return;
     await _init();
     await _plugin.cancel(_dailyId);
+  }
+
+  /// Weekly "Life Receipt" nudge — Sunday 7 PM local, repeating. Re-scheduled
+  /// with a fresh body on every app open (rides DailyReminderNotifier.refresh),
+  /// same as the daily reminder.
+  Future<void> scheduleWeeklyReview({String? body}) async {
+    if (kIsWeb) return;
+    await _init();
+    await _plugin.cancel(_weeklyId);
+    final now = DateTime.now();
+    var next = DateTime(now.year, now.month, now.day, 19);
+    // Advance to the next Sunday at 19:00 (today if it's Sunday and not past).
+    while (next.weekday != DateTime.sunday || !next.isAfter(now)) {
+      next = next.add(const Duration(days: 1));
+      next = DateTime(next.year, next.month, next.day, 19);
+    }
+    await _plugin.zonedSchedule(
+      _weeklyId,
+      'Your week in hours',
+      body ?? 'See where your money and time went this week.',
+      tz.TZDateTime.from(next, tz.local),
+      _daily,
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+      matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+    );
+  }
+
+  Future<void> cancelWeeklyReview() async {
+    if (kIsWeb) return;
+    await _init();
+    await _plugin.cancel(_weeklyId);
   }
 
   /// One-shot notification when a 24h hold ends — the decide moment.

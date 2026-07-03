@@ -6,6 +6,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/util/formatters.dart';
 import '../../data/models/goal.dart';
 import '../../state/app_providers.dart';
+import '../../widgets/empty_preview.dart';
 import '../../widgets/progress_ring.dart';
 import '../../widgets/responsive_body.dart';
 import '../../widgets/section_card.dart';
@@ -136,28 +137,60 @@ class GoalsScreen extends ConsumerWidget {
 
   Widget _empty(BuildContext context, WidgetRef ref) {
     final t = Theme.of(context).textTheme;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.flag_outlined, size: 64, color: AppColors.money),
-            const SizedBox(height: 16),
-            Text('No goals yet', style: t.titleLarge),
-            const SizedBox(height: 8),
-            Text(
-              'Set a goal and watch it count down in work-days, not rupees.',
-              textAlign: TextAlign.center,
-              style: t.bodyMedium,
+    return ContentWidth(
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
+        children: [
+          EmptyPreview(
+            title: 'YOUR FIRST GOAL',
+            preview: const _FakeGoalTile(),
+            cta: 'Add your first goal',
+            onTap: () => showAddGoalSheet(context, ref),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'Set a goal and watch it count down in work-days, not rupees.',
+            textAlign: TextAlign.center,
+            style: t.bodyMedium,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Greyed dummy goal behind the empty-state CTA.
+class _FakeGoalTile extends StatelessWidget {
+  const _FakeGoalTile();
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return SectionCard(
+      child: Row(
+        children: [
+          ProgressRing(
+            progress: 0.6,
+            size: 72,
+            stroke: 7,
+            color: AppColors.money,
+            trackColor: AppColors.border(context),
+            center: const Icon(Icons.flight_takeoff, color: AppColors.money),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Goa trip', style: t.titleLarge),
+                const SizedBox(height: 4),
+                Text('18 work-days away',
+                    style: t.bodyMedium?.copyWith(color: AppColors.time)),
+                const SizedBox(height: 2),
+                Text('₹30,000 / ₹50,000', style: t.labelSmall),
+              ],
             ),
-            const SizedBox(height: 20),
-            FilledButton(
-              onPressed: () => showAddGoalSheet(context, ref),
-              child: const Text('Add your first goal'),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

@@ -42,4 +42,10 @@ class AnalyticsService {
 
   // ---- Triggers ----
   void reminderSet({required bool on}) => _log('reminder_set', {'on': '$on'});
+
+  // ---- Weekly review (north-star: Weekly Reviewed Users) ----
+  void reviewOpen() => _log('review_open');
+  void reviewComplete({required String weekKey}) =>
+      _log('review_complete', {'week': weekKey});
+  void reviewShare() => _log('review_share');
 }

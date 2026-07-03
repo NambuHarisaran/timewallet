@@ -13,6 +13,7 @@ class AppColors {
   static const Color time = Color(0xFFF2A93B); // amber (= accent)
   static const Color positive = Color(0xFF4FB286); // muted mint
   static const Color warn = Color(0xFFE0697A); // muted red
+  static const Color accentSoft = Color(0xFFF6C77E); // soft amber (confetti)
 
   // Dark theme (default) — charcoal, NOT pure black
   static const Color darkBg = Color(0xFF14161C);
@@ -31,12 +32,13 @@ class AppColors {
   static const Color lightBorder = Color(0xFFE3E1D9);
 
   // ---- Hero panel fills (near-flat charcoal elevation; subtle tints only) ----
-  // Names retained so existing call sites compile; the rainbow is gone.
-  static const List<Color> auroraMoney = [Color(0xFF232733), Color(0xFF1B1E28)];
-  static const List<Color> auroraViolet = [Color(0xFF232733), Color(0xFF1B1E28)];
-  static const List<Color> auroraTime = [Color(0xFF232733), Color(0xFF1B1E28)];
-  static const List<Color> auroraGreen = [Color(0xFF1B2A26), Color(0xFF16201D)];
-  static const List<Color> auroraWarn = [Color(0xFF2C1D22), Color(0xFF21161A)];
+  // Three semantic fills; the old aurora* rainbow names are gone.
+  static const List<Color> heroNeutral = [Color(0xFF232733), Color(0xFF1B1E28)];
+  static const List<Color> heroPositive = [
+    Color(0xFF1B2A26),
+    Color(0xFF16201D)
+  ];
+  static const List<Color> heroWarn = [Color(0xFF2C1D22), Color(0xFF21161A)];
 
   // ---- Surface tokens (solid now — no translucency over a background) ----
   static const Color glassDark = darkSurface;

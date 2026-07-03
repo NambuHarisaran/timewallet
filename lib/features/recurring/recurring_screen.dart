@@ -37,7 +37,7 @@ class RecurringScreen extends ConsumerWidget {
           padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).viewPadding.bottom + 92),
           children: [
             GradientCard(
-              colors: AppColors.auroraWarn,
+              colors: AppColors.heroWarn,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

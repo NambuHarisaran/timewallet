@@ -12,6 +12,8 @@ void celebrate(BuildContext context, {Offset? origin}) {
   final overlay = Overlay.maybeOf(context, rootOverlay: true);
   if (overlay == null) return;
   HapticFeedback.mediumImpact();
+  // Respect reduced-motion: the haptic already marked the moment.
+  if (MediaQuery.of(context).disableAnimations) return;
 
   final size = MediaQuery.of(context).size;
   final from = origin ?? Offset(size.width / 2, size.height * 0.32);
@@ -41,13 +43,12 @@ class _Particle {
         spin = (r.nextDouble() - 0.5) * 14,
         size = 7 + r.nextDouble() * 7;
 
+  // Theme tokens only — the old neon purple/orange clashed with Midnight Mono.
   static const _palette = [
     AppColors.accent,
+    AppColors.accentSoft,
     AppColors.money,
-    AppColors.time,
     AppColors.positive,
-    Color(0xFFB14DFF),
-    Color(0xFFFF7E5F),
   ];
 }
 

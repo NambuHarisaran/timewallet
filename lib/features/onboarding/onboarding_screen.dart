@@ -388,7 +388,7 @@ class _AhaCard extends StatelessWidget {
 
     if (!ready) {
       return GradientCard(
-        colors: AppColors.auroraMoney,
+        colors: AppColors.heroNeutral,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -410,7 +410,7 @@ class _AhaCard extends StatelessWidget {
           ? (exampleAmount / monthlyMoney * 100).clamp(0, 100)
           : 0;
       return GradientCard(
-        colors: AppColors.auroraGreen,
+        colors: AppColors.heroPositive,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -432,7 +432,7 @@ class _AhaCard extends StatelessWidget {
     final minutes = rate > 0 ? (exampleAmount / rate) * 60 : 0.0;
     final timeStr = TimeFormat.longForm(minutes, hoursPerDay: hoursPerDay);
     return GradientCard(
-      colors: AppColors.auroraMoney,
+      colors: AppColors.heroNeutral,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

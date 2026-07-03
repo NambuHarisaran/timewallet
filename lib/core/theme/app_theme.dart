@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -49,6 +50,19 @@ class AppTheme {
       scaffoldBackgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
       colorScheme: scheme,
       splashFactory: InkSparkle.splashFactory,
+      // Fade-through page routes. Deliberately NOT ZoomPageTransitionsBuilder —
+      // it rasterizes translucent subtrees mid-transition and has crashed this
+      // app's nav before. Fade has no scale, so nothing to lerp badly.
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
+          TargetPlatform.fuchsia: FadeForwardsPageTransitionsBuilder(),
+          TargetPlatform.linux: FadeForwardsPageTransitionsBuilder(),
+          TargetPlatform.windows: FadeForwardsPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+        },
+      ),
       textTheme: baseText.copyWith(
         // Big money/number readouts use a mono face — the "ledger" signature.
         // JetBrains Mono (not Space Mono) — it ships the ₹ glyph (U+20B9).
