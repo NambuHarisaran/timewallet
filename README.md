@@ -1,4 +1,4 @@
-# TimeWallet 
+# Time Wallet 
 
 **Save your time the way you save your money.** TimeWallet converts every rupee
 you spend into the work-time it actually cost you — so "₹500" reads as
