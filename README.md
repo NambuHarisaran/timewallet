@@ -5,7 +5,7 @@ you spend into the work-time it actually cost you — so "₹500" reads as
 "3h 28m of your life." Built for India/UPI, it turns abstract money decisions
 into something you can *feel*.
 
-> _Time is money — so spend it wisely._
+> _Time is money — so spend it wisely_
 
 ---
 
