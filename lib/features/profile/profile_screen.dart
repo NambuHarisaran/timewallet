@@ -17,10 +17,14 @@ import '../insights/insights_screen.dart';
 import '../reclaimed/achievements_screen.dart';
 import '../recurring/recurring_screen.dart';
 import '../help/glossary_screen.dart';
+import '../help/faq_screen.dart';
 import '../salary/salary_setup_screen.dart';
 import '../walkthrough/walkthrough_screen.dart';
 import '../wrapped/wrapped_screen.dart';
 import 'edit_profile_screen.dart';
+import 'delete_confirmation_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -161,6 +165,9 @@ class ProfileScreen extends ConsumerWidget {
                 _tile(context, Icons.help_outline, 'How it works',
                     'Replay the feature walkthrough', const WalkthroughScreen()),
                 const Divider(),
+                _tile(context, Icons.question_answer_outlined, 'FAQ',
+                    'Frequently asked questions', const FaqScreen()),
+                const Divider(),
                 _tile(context, Icons.menu_book_outlined, 'What the words mean',
                     'Plain-language glossary of every term',
                     const GlossaryScreen()),
@@ -270,7 +277,13 @@ class ProfileScreen extends ConsumerWidget {
                   title: const Text('Delete account'),
                   subtitle:
                       const Text('Permanently erase all your data and account'),
-                  onTap: () => _deleteAccount(context, ref),
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const DeleteConfirmationScreen(),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -280,6 +293,80 @@ class ProfileScreen extends ConsumerWidget {
           const SizedBox(height: 8),
           // Keep in sync with pubspec.yaml `version:` (U9).
           Center(child: Text('TimeWallet · v1.0.0', style: t.labelSmall)),
+          const SizedBox(height: 24),
+          // aqrostudios Developer Banner
+          GestureDetector(
+            onTap: () async {
+              final url = Uri.parse('https://www.aqro.in/');
+              if (await canLaunchUrl(url)) {
+                await launchUrl(url, mode: LaunchMode.externalApplication);
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceAlt(context),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.border(context)),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: Theme.of(context).brightness == Brightness.dark
+                      ? [const Color(0xFF1B1E28), const Color(0xFF14161C)]
+                      : [const Color(0xFFFFFFFF), const Color(0xFFF5F4F0)],
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ClipRRect(
+                     borderRadius: BorderRadius.circular(6),
+                     child: Image.asset(
+                       Theme.of(context).brightness == Brightness.dark
+                           ? 'assets/aqro_logo_white.png'
+                           : 'assets/aqro_logo_black.png',
+                       height: 28,
+                       width: 28,
+                       fit: BoxFit.contain,
+                     ),
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'DEVELOPED BY',
+                        style: t.labelSmall?.copyWith(
+                          color: AppColors.muted(context),
+                          letterSpacing: 1.5,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Text(
+                            'aqrostudios',
+                            style: t.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(
+                            Icons.open_in_new,
+                            size: 14,
+                            color: AppColors.accent,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
           ],
         ),      // ListView
       ),        // ContentWidth
@@ -344,59 +431,6 @@ class ProfileScreen extends ConsumerWidget {
       MaterialPageRoute(builder: (_) => const SalarySetupScreen()),
     );
   }
-
-  Future<void> _deleteAccount(BuildContext context, WidgetRef ref) async {
-    // Destructive + irreversible → require the user to type DELETE (U3).
-    final ctrl = TextEditingController();
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialog) => AlertDialog(
-          title: const Text('Delete account?'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                  'This permanently erases your profile, expenses, goals, '
-                  'holdings and history, then deletes your account. This '
-                  'cannot be undone.'),
-              const SizedBox(height: 16),
-              TextField(
-                controller: ctrl,
-                autofocus: true,
-                textCapitalization: TextCapitalization.characters,
-                onChanged: (_) => setDialog(() {}),
-                decoration: const InputDecoration(
-                  labelText: 'Type DELETE to confirm',
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Cancel')),
-            FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: AppColors.warn),
-              onPressed: ctrl.text.trim().toUpperCase() == 'DELETE'
-                  ? () => Navigator.pop(ctx, true)
-                  : null,
-              child: const Text('Delete forever'),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (ok != true || !context.mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
-    final err = await ref.read(appActionsProvider).deleteAccountAndData();
-    // Success: auth stream flips -> AuthGate routes to login automatically.
-    if (err != null) {
-      messenger.showSnackBar(SnackBar(content: Text(err)));
-    }
-  }
-
   Future<void> _exportCsv(BuildContext context, WidgetRef ref) async {
     final expenses = ref.read(expensesProvider).asData?.value ?? const [];
     if (expenses.isEmpty) {
