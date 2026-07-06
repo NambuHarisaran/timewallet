@@ -26,20 +26,28 @@ re-prices your life in **hours worked** instead of rupees:
 The home dashboard narrates one mental model of your finances:
 
 - **EARN** — log work time, watch live earnings tick up at your real hourly rate (overtime-aware).
-- **SPEND** — today's spend shown as life-hours, plus a **monthly balance** card (income − spend).
+- **SPEND** — 2-tap quick capture; today's spend shown as life-hours, plus a **monthly balance** card (income − spend).
 - **DECIDE** — the **"What's it worth?"** quiz: answer a few questions, get a verdict (Worth it / Sleep on it / Skip it). Put wants on a 24h hold and reclaim the time if you skip.
-- **GROW** — goals counted down in work-days, seven wealth-planning engines, and a set of financial calculators.
+- **GROW** — goals counted down in work-days, plus the **Plan** tab: seven wealth-planning engines and a set of financial calculators.
+
+### Guided tools
+Every planning tool runs as a **guided flow**: one plain-language question per
+screen ("How much can you invest every month?"), typed manual entry with
+preset chips (no fiddly sliders), then an **output-only result** — big number,
+growth chart, and editable answer chips to tweak any input in place.
 
 ### Highlights
 - **True Hourly Wage** — factors commute + work costs into your *real* rate.
 - **Invisible Work** — subscriptions surfaced as the work-days they quietly cost.
 - **Goals in work-days** — every goal shows how many days of your life it's worth; completed goals get a ✓.
-- **Wealth engines** — asset allocation, money health check, SWP, gold comparison, debt payoff, child savings, retirement (pure planning math, no market data).
+- **Weekly Life Receipt** — a Sunday review of the week in hours: category split, best skip, mood, and share card.
+- **Wealth engines** — asset allocation, money health check, SWP, gold comparison, debt payoff (single + snowball/avalanche portfolio), child savings, retirement (pure planning math, no market data; EPF/EPS split and PPF/SSY caps modelled honestly).
+- **Financial calculators** — SIP, lumpsum, goal SIP, FD (quarterly compounding), inflation, financial freedom, crossover point, money→time — each with a growth chart.
+- **Share as image** — every share card exports as a PNG with a *Tracked by TimeWallet* badge, straight into the system share sheet (WhatsApp & co.) — plugin-free.
 - **Receipt OCR** — snap a bill and the total is read on-device (ML Kit); nothing leaves the phone.
 - **Activity log** — searchable, filterable history of every expense, work log, and goal.
 - **Monthly Wrapped** — a once-a-month recap of where your money and time went.
 - **Reclaimed achievements** — proof of the life you bought back by skipping wants.
-- **Financial calculators** — SIP, lumpsum, EMI, FD, goal SIP, inflation, retirement, crossover point, and more.
 
 ---
 
@@ -51,9 +59,11 @@ The home dashboard narrates one mental model of your finances:
 | State | Riverpod 3 (`flutter_riverpod`) |
 | Backend | Firebase — Auth + Cloud Firestore (project `aqrocashato`) |
 | Auth | Email/password + Google Sign-In |
+| Analytics | `firebase_analytics` (typed events in `services/analytics_service.dart`) |
 | Local prefs | `shared_preferences` |
 | Receipt OCR | `google_mlkit_text_recognition` (on-device) + `image_picker` |
-| Notifications | `flutter_local_notifications` |
+| Notifications | `flutter_local_notifications` + `timezone` |
+| Image share | Plugin-free: RepaintBoundary → PNG → platform channel (Android share sheet) / Web Share API |
 | Misc | `google_fonts`, `intl`, `uuid` |
 
 ---
@@ -67,20 +77,26 @@ lib/
 │   ├── time/                     # TimeEngine (money↔time), duration formatting
 │   ├── finance/                  # calculators.dart + engines.dart (pure math)
 │   ├── theme/                    # colors, spacing, app theme
-│   └── util/                     # json_safe, engagement, formatters
+│   └── util/                     # json_safe, engagement, formatters, weekly review
 ├── data/
 │   ├── models/                   # Expense, Goal, Holding, UserProfile, ...
 │   └── backend/                  # DataBackend interface + Firestore impl
-├── services/                     # auth, notifications, export, receipt OCR
+├── services/                     # auth, notifications, analytics, share, receipt OCR
 ├── state/app_providers.dart      # Riverpod providers + AppActions (all mutations)
-├── widgets/                      # shared UI (cards, rings, tips, celebrate)
+├── widgets/                      # shared UI (cards, charts, value_field, celebrate)
 └── features/                     # one folder per screen area
-    ├── dashboard/  goals/  invest/  worth/  history/  tools/
-    ├── onboarding/ expense/ insights/ wrapped/ reclaimed/  ...
+    ├── dashboard/  goals/  plan/  review/  worth/  history/
+    ├── tools/      wealth/ share/ future_you/ expense/
+    ├── onboarding/ insights/ wrapped/ reclaimed/  ...
 ```
 
-**Convention:** all data mutations go through `AppActions` in
-`lib/state/app_providers.dart`. UI never writes to the backend directly.
+**Conventions**
+- All data mutations go through `AppActions` in `lib/state/app_providers.dart`.
+  UI never writes to the backend directly.
+- Planning tools are built on `features/tools/guided_tool_flow.dart`
+  (question-per-screen wizard) with `widgets/value_field.dart` inputs.
+- No new packages without discussion — plugin needs are hand-rolled
+  (see the share platform channel in `MainActivity.kt`).
 
 ---
 
@@ -121,6 +137,8 @@ flutter test           # unit + widget tests (test/)
   finite `minimumSize` before putting it in a `Row`, or layout will throw.
 - Money inputs are whole-rupee (`digitsOnly`) app-wide by convention.
 - `intl` exports a `TextDirection` that shadows `dart:ui`'s — import `dart:ui as ui` where needed.
+- Displayed financial facts (EPF/PPF/SSY rates, caps) are documented at their
+  constants in `core/finance/engines.dart` — verify before changing.
 
 ---
 
