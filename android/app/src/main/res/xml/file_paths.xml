@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Grants the share sheet read access to exported cards only — nothing else
+     in the cache dir is exposed. -->
+<paths>
+    <cache-path name="shares" path="shares/" />
+</paths>

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart' show DateFormat;
 
@@ -8,9 +7,33 @@ import '../../core/theme/app_colors.dart';
 import '../../core/time/duration_format.dart';
 import '../../core/util/formatters.dart';
 import '../../state/app_providers.dart';
+import '../../widgets/line_chart.dart';
 import '../../widgets/section_card.dart';
+import '../../widgets/value_field.dart';
+import '../wealth/engine_kit.dart' show moneyShort;
+import 'guided_tool_flow.dart';
 
 final _money = moneyFmt;
+
+String _pct(double p) => p == p.roundToDouble()
+    ? '${p.toStringAsFixed(0)}%'
+    : '${p.toStringAsFixed(1)}%';
+String _yrs(double p) => '${p.round()} yrs';
+
+/// Yearly corpus path for a start amount + monthly investment compounding
+/// monthly — used by the freedom/crossover charts.
+List<double> _corpusSeries(
+    double start, double monthlyInvest, double annualRatePct, int months) {
+  final i = annualRatePct / 12 / 100;
+  var bal = start;
+  final pts = <double>[start];
+  for (var m = 1; m <= months; m++) {
+    bal = bal * (1 + i) + monthlyInvest;
+    if (m % 12 == 0) pts.add(bal);
+  }
+  if (months % 12 != 0) pts.add(bal);
+  return pts;
+}
 
 // ---------------------------------------------------------------------------
 // SIP
@@ -30,31 +53,94 @@ class _SipState extends ConsumerState<SipCalculatorScreen> {
         monthly: _monthly, annualRatePct: _rate, years: _years);
     final profile = ref.watch(profileOrDefaultProvider);
     final days = profile.tracksTime ? profile.engine.daysFor(r.futureValue) : 0;
+    final yrs = _years.round();
 
-    return _CalcScaffold(
+    return GuidedToolFlow(
       title: 'SIP calculator',
-      sliders: [
-        _CalcSlider('Monthly investment', _monthly, 500, 100000, 199,
-            (v) => setState(() => _monthly = v), _money.format(_monthly)),
-        _CalcSlider('Expected return', _rate, 1, 30, 58,
-            (v) => setState(() => _rate = v), '${_rate.toStringAsFixed(1)}% p.a.'),
-        _CalcSlider('Time period', _years, 1, 40, 39,
-            (v) => setState(() => _years = v), '${_years.toStringAsFixed(0)} yrs'),
+      accent: AppColors.positive,
+      questions: [
+        ToolQuestion(
+          question: 'How much can you invest every month?',
+          help: 'Even small amounts compound — pick what you can sustain.',
+          label: 'Monthly',
+          answer: _money.format(_monthly),
+          input: ValueField(
+            label: 'Monthly investment',
+            value: _monthly,
+            min: 100,
+            max: 10000000,
+            prefix: '₹ ',
+            presets: const [1000, 5000, 10000, 25000],
+            accent: AppColors.positive,
+            onChanged: (v) => setState(() => _monthly = v),
+          ),
+        ),
+        ToolQuestion(
+          question: 'What annual return do you expect?',
+          help:
+              'Long-run equity funds have averaged around 12% — assuming less is safer.',
+          label: 'Return',
+          answer: _pct(_rate),
+          input: ValueField(
+            label: 'Expected return',
+            value: _rate,
+            min: 1,
+            max: 50,
+            suffix: '% p.a.',
+            decimal: true,
+            presets: const [8, 10, 12, 15],
+            presetLabel: _pct,
+            accent: AppColors.positive,
+            onChanged: (v) => setState(() => _rate = v),
+          ),
+        ),
+        ToolQuestion(
+          question: 'For how many years will you keep investing?',
+          label: 'Period',
+          answer: '$yrs yrs',
+          input: ValueField(
+            label: 'Time period',
+            value: _years,
+            min: 1,
+            max: 60,
+            suffix: 'yrs',
+            presets: const [5, 10, 15, 20, 30],
+            presetLabel: _yrs,
+            accent: AppColors.positive,
+            onChanged: (v) => setState(() => _years = v),
+          ),
+        ),
       ],
-      result: _ResultCard(
-        accent: AppColors.positive,
-        headline: 'Future value',
-        headlineValue: _money.format(r.futureValue),
-        footnote: profile.tracksTime
-            ? '≈ ${TimeFormat.longForm(days * profile.hoursPerDay * 60, hoursPerDay: profile.hoursPerDay)} of your work life'
-            : null,
-        leftLabel: 'Invested',
-        leftValue: r.invested,
-        rightLabel: 'Returns',
-        rightValue: r.returns,
-        leftColor: AppColors.money,
-        rightColor: AppColors.positive,
-      ),
+      results: [
+        _ResultCard(
+          accent: AppColors.positive,
+          headline: 'Future value',
+          headlineValue: _money.format(r.futureValue),
+          footnote: profile.tracksTime
+              ? '≈ ${TimeFormat.longForm(days * profile.hoursPerDay * 60, hoursPerDay: profile.hoursPerDay)} of your work life'
+              : null,
+          leftLabel: 'Invested',
+          leftValue: r.invested,
+          rightLabel: 'Returns',
+          rightValue: r.returns,
+          leftColor: AppColors.money,
+          rightColor: AppColors.positive,
+        ),
+        _ChartCard(
+          title: 'Growth over time',
+          xEnd: '${yrs}y',
+          series: [
+            LineSeries('Corpus', [
+              for (var y = 0; y <= yrs; y++)
+                Calculators.sip(
+                        monthly: _monthly,
+                        annualRatePct: _rate,
+                        years: y.toDouble())
+                    .futureValue,
+            ], AppColors.positive),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -75,27 +161,91 @@ class _LumpsumState extends State<LumpsumCalculatorScreen> {
   Widget build(BuildContext context) {
     final r = Calculators.lumpsum(
         principal: _principal, annualRatePct: _rate, years: _years);
-    return _CalcScaffold(
+    final yrs = _years.round();
+
+    return GuidedToolFlow(
       title: 'Lumpsum calculator',
-      sliders: [
-        _CalcSlider('Total investment', _principal, 1000, 10000000, 999,
-            (v) => setState(() => _principal = v), _money.format(_principal)),
-        _CalcSlider('Expected return', _rate, 1, 30, 58,
-            (v) => setState(() => _rate = v), '${_rate.toStringAsFixed(1)}% p.a.'),
-        _CalcSlider('Time period', _years, 1, 40, 39,
-            (v) => setState(() => _years = v), '${_years.toStringAsFixed(0)} yrs'),
+      accent: AppColors.money,
+      questions: [
+        ToolQuestion(
+          question: 'How much are you investing one-time?',
+          label: 'Investment',
+          answer: _money.format(_principal),
+          input: ValueField(
+            label: 'Total investment',
+            value: _principal,
+            min: 1000,
+            max: 1000000000,
+            prefix: '₹ ',
+            presets: const [100000, 500000, 1000000, 10000000],
+            presetLabel: moneyCompact,
+            accent: AppColors.money,
+            onChanged: (v) => setState(() => _principal = v),
+          ),
+        ),
+        ToolQuestion(
+          question: 'What annual return do you expect?',
+          help:
+              'Long-run equity funds have averaged around 12% — assuming less is safer.',
+          label: 'Return',
+          answer: _pct(_rate),
+          input: ValueField(
+            label: 'Expected return',
+            value: _rate,
+            min: 1,
+            max: 50,
+            suffix: '% p.a.',
+            decimal: true,
+            presets: const [8, 10, 12, 15],
+            presetLabel: _pct,
+            accent: AppColors.money,
+            onChanged: (v) => setState(() => _rate = v),
+          ),
+        ),
+        ToolQuestion(
+          question: 'How long will it stay invested?',
+          label: 'Period',
+          answer: '$yrs yrs',
+          input: ValueField(
+            label: 'Time period',
+            value: _years,
+            min: 1,
+            max: 60,
+            suffix: 'yrs',
+            presets: const [5, 10, 15, 20, 30],
+            presetLabel: _yrs,
+            accent: AppColors.money,
+            onChanged: (v) => setState(() => _years = v),
+          ),
+        ),
       ],
-      result: _ResultCard(
-        accent: AppColors.money,
-        headline: 'Future value',
-        headlineValue: _money.format(r.futureValue),
-        leftLabel: 'Invested',
-        leftValue: r.invested,
-        rightLabel: 'Returns',
-        rightValue: r.returns,
-        leftColor: AppColors.money,
-        rightColor: AppColors.positive,
-      ),
+      results: [
+        _ResultCard(
+          accent: AppColors.money,
+          headline: 'Future value',
+          headlineValue: _money.format(r.futureValue),
+          leftLabel: 'Invested',
+          leftValue: r.invested,
+          rightLabel: 'Returns',
+          rightValue: r.returns,
+          leftColor: AppColors.money,
+          rightColor: AppColors.positive,
+        ),
+        _ChartCard(
+          title: 'Growth over time',
+          xEnd: '${yrs}y',
+          series: [
+            LineSeries('Corpus', [
+              for (var y = 0; y <= yrs; y++)
+                Calculators.lumpsum(
+                        principal: _principal,
+                        annualRatePct: _rate,
+                        years: y.toDouble())
+                    .futureValue,
+            ], AppColors.money),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -128,25 +278,41 @@ class _TimeValueState extends ConsumerState<TimeValueScreen> {
     final pct = profile.monthlyMoney > 0
         ? (_amount / profile.monthlyMoney * 100)
         : 0;
-    return _CalcScaffold(
+    return GuidedToolFlow(
       title: 'Money → time',
-      sliders: [
-        _CalcSlider('Amount', _amount, 100, 200000, 1999,
-            (v) => setState(() => _amount = v), _money.format(_amount),
-            accent: AppColors.time),
+      accent: AppColors.time,
+      questions: [
+        ToolQuestion(
+          question: 'How much money should we turn into time?',
+          help: 'A price tag, a bill, a temptation — any amount.',
+          label: 'Amount',
+          answer: _money.format(_amount),
+          input: ValueField(
+            label: 'Amount',
+            value: _amount,
+            min: 10,
+            max: 10000000,
+            prefix: '₹ ',
+            presets: const [500, 1000, 5000, 10000],
+            accent: AppColors.time,
+            onChanged: (v) => setState(() => _amount = v),
+          ),
+        ),
       ],
-      result: _SimpleResult(
-        accent: AppColors.time,
-        headline: tracks ? 'That costs you' : 'Share of monthly budget',
-        value: tracks
-            ? TimeFormat.longForm(minutes, hoursPerDay: profile.hoursPerDay)
-            : (profile.monthlyMoney > 0
-                ? '${pct.toStringAsFixed(1)}%'
-                : 'Set up income first'),
-        footnote: tracks
-            ? 'At ${_money.format(profile.effectiveHourlyRate)}/hour you earn.'
-            : 'of your ${_money.format(profile.monthlyMoney)} monthly budget.',
-      ),
+      results: [
+        _SimpleResult(
+          accent: AppColors.time,
+          headline: tracks ? 'That costs you' : 'Share of monthly budget',
+          value: tracks
+              ? TimeFormat.longForm(minutes, hoursPerDay: profile.hoursPerDay)
+              : (profile.monthlyMoney > 0
+                  ? '${pct.toStringAsFixed(1)}%'
+                  : 'Set up income first'),
+          footnote: tracks
+              ? 'Based on the ${_money.format(profile.effectiveHourlyRate)}/hour you earn.'
+              : 'of your ${_money.format(profile.monthlyMoney)} monthly budget.',
+        ),
+      ],
     );
   }
 }
@@ -167,30 +333,92 @@ class _GoalSipState extends State<GoalSipCalculatorScreen> {
   Widget build(BuildContext context) {
     final r = Calculators.goalSip(
         target: _target, annualRatePct: _rate, years: _years);
-    return _CalcScaffold(
+    final yrs = _years.round();
+
+    return GuidedToolFlow(
       title: 'Goal SIP',
-      sliders: [
-        _CalcSlider('Target amount', _target, 50000, 50000000, 999,
-            (v) => setState(() => _target = v), _money.format(_target),
-            accent: AppColors.accent),
-        _CalcSlider('Expected return', _rate, 1, 30, 58,
-            (v) => setState(() => _rate = v), '${_rate.toStringAsFixed(1)}% p.a.',
-            accent: AppColors.accent),
-        _CalcSlider('Time period', _years, 1, 40, 39,
-            (v) => setState(() => _years = v), '${_years.toStringAsFixed(0)} yrs',
-            accent: AppColors.accent),
+      accent: AppColors.accent,
+      questions: [
+        ToolQuestion(
+          question: 'How much money do you want to reach?',
+          help: 'Your target corpus — a down-payment, education fund, anything.',
+          label: 'Target',
+          answer: _money.format(_target),
+          input: ValueField(
+            label: 'Target amount',
+            value: _target,
+            min: 10000,
+            max: 1000000000,
+            prefix: '₹ ',
+            presets: const [1000000, 2500000, 5000000, 10000000],
+            presetLabel: moneyCompact,
+            accent: AppColors.accent,
+            onChanged: (v) => setState(() => _target = v),
+          ),
+        ),
+        ToolQuestion(
+          question: 'What annual return do you expect?',
+          help:
+              'Long-run equity funds have averaged around 12% — assuming less is safer.',
+          label: 'Return',
+          answer: _pct(_rate),
+          input: ValueField(
+            label: 'Expected return',
+            value: _rate,
+            min: 1,
+            max: 50,
+            suffix: '% p.a.',
+            decimal: true,
+            presets: const [8, 10, 12, 15],
+            presetLabel: _pct,
+            accent: AppColors.accent,
+            onChanged: (v) => setState(() => _rate = v),
+          ),
+        ),
+        ToolQuestion(
+          question: 'In how many years do you want to get there?',
+          label: 'Period',
+          answer: '$yrs yrs',
+          input: ValueField(
+            label: 'Time period',
+            value: _years,
+            min: 1,
+            max: 60,
+            suffix: 'yrs',
+            presets: const [5, 10, 15, 20, 30],
+            presetLabel: _yrs,
+            accent: AppColors.accent,
+            onChanged: (v) => setState(() => _years = v),
+          ),
+        ),
       ],
-      result: _ResultCard(
-        accent: AppColors.accent,
-        headline: 'Monthly investment needed',
-        headlineValue: _money.format(r.monthly),
-        leftLabel: 'You invest',
-        leftValue: r.invested,
-        rightLabel: 'Returns',
-        rightValue: r.returns,
-        leftColor: AppColors.money,
-        rightColor: AppColors.positive,
-      ),
+      results: [
+        _ResultCard(
+          accent: AppColors.accent,
+          headline: 'Monthly investment needed',
+          headlineValue: _money.format(r.monthly),
+          leftLabel: 'You invest',
+          leftValue: r.invested,
+          rightLabel: 'Returns',
+          rightValue: r.returns,
+          leftColor: AppColors.money,
+          rightColor: AppColors.positive,
+        ),
+        _ChartCard(
+          title: 'Path to your target',
+          xEnd: '${yrs}y',
+          series: [
+            LineSeries('Corpus', [
+              for (var y = 0; y <= yrs; y++)
+                Calculators.sip(
+                        monthly: r.monthly,
+                        annualRatePct: _rate,
+                        years: y.toDouble())
+                    .futureValue,
+            ], AppColors.accent),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -211,30 +439,92 @@ class _FdState extends State<FdCalculatorScreen> {
   Widget build(BuildContext context) {
     final r = Calculators.fd(
         principal: _principal, annualRatePct: _rate, years: _years);
-    return _CalcScaffold(
+    final yrs = _years.round();
+
+    return GuidedToolFlow(
       title: 'FD calculator',
-      sliders: [
-        _CalcSlider('Deposit amount', _principal, 1000, 10000000, 999,
-            (v) => setState(() => _principal = v), _money.format(_principal),
-            accent: AppColors.money),
-        _CalcSlider('Interest rate', _rate, 1, 12, 44,
-            (v) => setState(() => _rate = v), '${_rate.toStringAsFixed(1)}% p.a.',
-            accent: AppColors.money),
-        _CalcSlider('Tenure', _years, 1, 20, 19,
-            (v) => setState(() => _years = v), '${_years.toStringAsFixed(0)} yrs',
-            accent: AppColors.money),
+      accent: AppColors.money,
+      questions: [
+        ToolQuestion(
+          question: 'How much are you depositing?',
+          label: 'Deposit',
+          answer: _money.format(_principal),
+          input: ValueField(
+            label: 'Deposit amount',
+            value: _principal,
+            min: 1000,
+            max: 1000000000,
+            prefix: '₹ ',
+            presets: const [50000, 100000, 500000, 1000000],
+            presetLabel: moneyCompact,
+            accent: AppColors.money,
+            onChanged: (v) => setState(() => _principal = v),
+          ),
+        ),
+        ToolQuestion(
+          question: 'What interest rate is your bank offering?',
+          help: 'Most banks currently offer roughly 6–8% on longer tenures.',
+          label: 'Rate',
+          answer: _pct(_rate),
+          input: ValueField(
+            label: 'Interest rate',
+            value: _rate,
+            min: 1,
+            max: 15,
+            suffix: '% p.a.',
+            decimal: true,
+            presets: const [6, 6.5, 7, 7.5],
+            presetLabel: _pct,
+            accent: AppColors.money,
+            onChanged: (v) => setState(() => _rate = v),
+          ),
+        ),
+        ToolQuestion(
+          question: 'For how long will you lock it in?',
+          help: 'Indian banks offer FDs up to 10 years.',
+          label: 'Tenure',
+          answer: '$yrs yrs',
+          input: ValueField(
+            label: 'Tenure',
+            value: _years,
+            min: 1,
+            max: 10,
+            suffix: 'yrs',
+            presets: const [1, 3, 5, 10],
+            presetLabel: _yrs,
+            accent: AppColors.money,
+            onChanged: (v) => setState(() => _years = v),
+          ),
+        ),
       ],
-      result: _ResultCard(
-        accent: AppColors.money,
-        headline: 'Maturity value',
-        headlineValue: _money.format(r.futureValue),
-        leftLabel: 'Principal',
-        leftValue: r.invested,
-        rightLabel: 'Interest',
-        rightValue: r.returns,
-        leftColor: AppColors.money,
-        rightColor: AppColors.positive,
-      ),
+      results: [
+        _ResultCard(
+          accent: AppColors.money,
+          headline: 'Maturity value',
+          headlineValue: _money.format(r.futureValue),
+          footnote: 'Compounded quarterly, the way most Indian banks pay FDs.',
+          leftLabel: 'Principal',
+          leftValue: r.invested,
+          rightLabel: 'Interest',
+          rightValue: r.returns,
+          leftColor: AppColors.money,
+          rightColor: AppColors.positive,
+        ),
+        _ChartCard(
+          title: 'Growth over time',
+          xEnd: '${yrs}y',
+          series: [
+            LineSeries('Value', [
+              for (var y = 0; y <= yrs; y++)
+                Calculators.fd(
+                        principal: _principal,
+                        annualRatePct: _rate,
+                        years: y.toDouble())
+                    .futureValue,
+            ], AppColors.money),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -255,26 +545,83 @@ class _InflationState extends State<InflationCalculatorScreen> {
   Widget build(BuildContext context) {
     final future =
         Calculators.inflate(amount: _amount, ratePct: _rate, years: _years);
-    return _CalcScaffold(
+    final yrs = _years.round();
+
+    return GuidedToolFlow(
       title: 'Inflation impact',
-      sliders: [
-        _CalcSlider("Today's cost", _amount, 1000, 10000000, 999,
-            (v) => setState(() => _amount = v), _money.format(_amount),
-            accent: AppColors.warn),
-        _CalcSlider('Inflation rate', _rate, 1, 15, 56,
-            (v) => setState(() => _rate = v), '${_rate.toStringAsFixed(1)}% p.a.',
-            accent: AppColors.warn),
-        _CalcSlider('Years ahead', _years, 1, 40, 39,
-            (v) => setState(() => _years = v), '${_years.toStringAsFixed(0)} yrs',
-            accent: AppColors.warn),
+      accent: AppColors.warn,
+      questions: [
+        ToolQuestion(
+          question: 'What does it cost today?',
+          label: 'Cost today',
+          answer: _money.format(_amount),
+          input: ValueField(
+            label: "Today's cost",
+            value: _amount,
+            min: 100,
+            max: 1000000000,
+            prefix: '₹ ',
+            presets: const [10000, 100000, 1000000, 10000000],
+            presetLabel: moneyCompact,
+            accent: AppColors.warn,
+            onChanged: (v) => setState(() => _amount = v),
+          ),
+        ),
+        ToolQuestion(
+          question: 'What inflation rate do you assume?',
+          help: "India's consumer inflation has averaged about 5–6% long-run.",
+          label: 'Inflation',
+          answer: _pct(_rate),
+          input: ValueField(
+            label: 'Inflation rate',
+            value: _rate,
+            min: 0.5,
+            max: 30,
+            suffix: '% p.a.',
+            decimal: true,
+            presets: const [4, 5, 6, 8],
+            presetLabel: _pct,
+            accent: AppColors.warn,
+            onChanged: (v) => setState(() => _rate = v),
+          ),
+        ),
+        ToolQuestion(
+          question: 'How many years ahead should we look?',
+          label: 'Years',
+          answer: '$yrs yrs',
+          input: ValueField(
+            label: 'Years ahead',
+            value: _years,
+            min: 1,
+            max: 50,
+            suffix: 'yrs',
+            presets: const [5, 10, 20, 30],
+            presetLabel: _yrs,
+            accent: AppColors.warn,
+            onChanged: (v) => setState(() => _years = v),
+          ),
+        ),
       ],
-      result: _SimpleResult(
-        accent: AppColors.warn,
-        headline: 'Future cost',
-        value: _money.format(future),
-        footnote:
-            'What costs ${_money.format(_amount)} today will cost this in ${_years.toStringAsFixed(0)} years at ${_rate.toStringAsFixed(1)}% inflation.',
-      ),
+      results: [
+        _SimpleResult(
+          accent: AppColors.warn,
+          headline: 'Future cost',
+          value: _money.format(future),
+          footnote:
+              'What costs ${_money.format(_amount)} today will cost this in ${_years.toStringAsFixed(0)} years at ${_rate.toStringAsFixed(1)}% inflation.',
+        ),
+        _ChartCard(
+          title: 'Cost over time',
+          xEnd: '${yrs}y',
+          series: [
+            LineSeries('Cost', [
+              for (var y = 0; y <= yrs; y++)
+                Calculators.inflate(
+                    amount: _amount, ratePct: _rate, years: y.toDouble()),
+            ], AppColors.warn),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -310,30 +657,95 @@ class _FreedomState extends State<FinancialFreedomScreen> {
       final mo = months % 12;
       value = mo > 0 ? '$y yr $mo mo' : '$y yr';
     }
+    final showChart = months > 0 && months < 1200;
+    final path =
+        showChart ? _corpusSeries(_savings, _invest, _rate, months) : const <double>[];
 
-    return _CalcScaffold(
+    return GuidedToolFlow(
       title: 'Financial freedom',
-      sliders: [
-        _CalcSlider('Monthly expense', _expense, 5000, 500000, 99,
-            (v) => setState(() => _expense = v), _money.format(_expense),
-            accent: AppColors.positive),
-        _CalcSlider('Current savings', _savings, 0, 50000000, 999,
-            (v) => setState(() => _savings = v), _money.format(_savings),
-            accent: AppColors.positive),
-        _CalcSlider('Monthly investment', _invest, 0, 500000, 99,
-            (v) => setState(() => _invest = v), _money.format(_invest),
-            accent: AppColors.positive),
-        _CalcSlider('Expected return', _rate, 1, 20, 38,
-            (v) => setState(() => _rate = v), '${_rate.toStringAsFixed(1)}% p.a.',
-            accent: AppColors.positive),
+      accent: AppColors.positive,
+      questions: [
+        ToolQuestion(
+          question: 'How much do you spend per month?',
+          label: 'Expense',
+          answer: _money.format(_expense),
+          input: ValueField(
+            label: 'Monthly expense',
+            value: _expense,
+            min: 1000,
+            max: 10000000,
+            prefix: '₹ ',
+            accent: AppColors.positive,
+            onChanged: (v) => setState(() => _expense = v),
+          ),
+        ),
+        ToolQuestion(
+          question: 'How much have you already saved or invested?',
+          label: 'Savings',
+          answer: _money.format(_savings),
+          input: ValueField(
+            label: 'Current savings',
+            value: _savings,
+            min: 0,
+            max: 1000000000,
+            prefix: '₹ ',
+            accent: AppColors.positive,
+            onChanged: (v) => setState(() => _savings = v),
+          ),
+        ),
+        ToolQuestion(
+          question: 'How much can you invest every month?',
+          label: 'Investing',
+          answer: _money.format(_invest),
+          input: ValueField(
+            label: 'Monthly investment',
+            value: _invest,
+            min: 0,
+            max: 10000000,
+            prefix: '₹ ',
+            accent: AppColors.positive,
+            onChanged: (v) => setState(() => _invest = v),
+          ),
+        ),
+        ToolQuestion(
+          question: 'What annual return do you expect?',
+          help:
+              'Expenses are in today\'s money — use a return above inflation (a real return) for a realistic date.',
+          label: 'Return',
+          answer: _pct(_rate),
+          input: ValueField(
+            label: 'Expected return',
+            value: _rate,
+            min: 1,
+            max: 30,
+            suffix: '% p.a.',
+            decimal: true,
+            presets: const [8, 10, 12, 15],
+            presetLabel: _pct,
+            accent: AppColors.positive,
+            onChanged: (v) => setState(() => _rate = v),
+          ),
+        ),
       ],
-      result: _SimpleResult(
-        accent: AppColors.positive,
-        headline: 'Freedom in',
-        value: value,
-        footnote:
-            'Target corpus ${_money.format(target)} (25× annual expense), investing ${_money.format(_invest)}/mo at ${_rate.toStringAsFixed(1)}%.',
-      ),
+      results: [
+        _SimpleResult(
+          accent: AppColors.positive,
+          headline: 'Freedom in',
+          value: value,
+          footnote:
+              'Target corpus ${_money.format(target)} (25× annual expense — the 4% rule), investing ${_money.format(_invest)}/mo at ${_rate.toStringAsFixed(1)}%.',
+        ),
+        if (showChart)
+          _ChartCard(
+            title: 'Your path to the target',
+            xEnd: '${(months / 12).ceil()}y',
+            series: [
+              LineSeries('Corpus', path, AppColors.positive),
+              LineSeries('Target', List.filled(path.length, target),
+                  AppColors.accent),
+            ],
+          ),
+      ],
     );
   }
 }
@@ -386,36 +798,118 @@ class _CrossoverState extends ConsumerState<CrossoverScreen> {
       final date = DateTime.now().add(Duration(days: (r.months * 30.44).round()));
       value = DateFormat('MMM yyyy').format(date);
     }
+    final showChart = !r.reached && r.months > 0 && r.months < 1200;
+    final path = showChart
+        ? _corpusSeries(_corpus, _invest, _rate, r.months)
+        : const <double>[];
 
-    return _CalcScaffold(
+    return GuidedToolFlow(
       title: 'Crossover point',
-      sliders: [
-        _CalcSlider('Invested corpus now', _corpus, 0, 50000000, 999,
-            (v) => setState(() => _corpus = v), _money.format(_corpus),
-            accent: AppColors.accent),
-        _CalcSlider('Monthly expense', _expense, 5000, 500000, 99,
-            (v) => setState(() => _expense = v), _money.format(_expense),
-            accent: AppColors.accent),
-        _CalcSlider('Monthly investment', _invest, 0, 500000, 99,
-            (v) => setState(() => _invest = v), _money.format(_invest),
-            accent: AppColors.accent),
-        _CalcSlider('Expected return', _rate, 1, 20, 38,
-            (v) => setState(() => _rate = v), '${_rate.toStringAsFixed(1)}% p.a.',
-            accent: AppColors.accent),
-        _CalcSlider('Safe withdrawal', _withdraw, 2, 8, 24,
-            (v) => setState(() => _withdraw = v),
-            '${_withdraw.toStringAsFixed(1)}%',
-            accent: AppColors.accent),
+      accent: AppColors.accent,
+      questions: [
+        ToolQuestion(
+          question: 'How big is your invested corpus today?',
+          help: 'Everything already working for you — funds, FDs, stocks.',
+          label: 'Corpus',
+          answer: _money.format(_corpus),
+          input: ValueField(
+            label: 'Invested corpus now',
+            value: _corpus,
+            min: 0,
+            max: 1000000000,
+            prefix: '₹ ',
+            accent: AppColors.accent,
+            onChanged: (v) => setState(() => _corpus = v),
+          ),
+        ),
+        ToolQuestion(
+          question: 'How much do you spend per month?',
+          label: 'Expense',
+          answer: _money.format(_expense),
+          input: ValueField(
+            label: 'Monthly expense',
+            value: _expense,
+            min: 1000,
+            max: 10000000,
+            prefix: '₹ ',
+            accent: AppColors.accent,
+            onChanged: (v) => setState(() => _expense = v),
+          ),
+        ),
+        ToolQuestion(
+          question: 'How much do you invest per month?',
+          label: 'Investing',
+          answer: _money.format(_invest),
+          input: ValueField(
+            label: 'Monthly investment',
+            value: _invest,
+            min: 0,
+            max: 10000000,
+            prefix: '₹ ',
+            accent: AppColors.accent,
+            onChanged: (v) => setState(() => _invest = v),
+          ),
+        ),
+        ToolQuestion(
+          question: 'What annual return do you expect?',
+          help:
+              'Expenses are in today\'s money — use a return above inflation (a real return) for a realistic date.',
+          label: 'Return',
+          answer: _pct(_rate),
+          input: ValueField(
+            label: 'Expected return',
+            value: _rate,
+            min: 1,
+            max: 30,
+            suffix: '% p.a.',
+            decimal: true,
+            presets: const [8, 10, 12, 15],
+            presetLabel: _pct,
+            accent: AppColors.accent,
+            onChanged: (v) => setState(() => _rate = v),
+          ),
+        ),
+        ToolQuestion(
+          question: 'What withdrawal rate feels safe?',
+          help:
+              'The classic rule of thumb is 4% a year — lower is more conservative.',
+          label: 'Withdrawal',
+          answer: _pct(_withdraw),
+          input: ValueField(
+            label: 'Safe withdrawal',
+            value: _withdraw,
+            min: 1,
+            max: 10,
+            suffix: '%',
+            decimal: true,
+            presets: const [3, 3.5, 4, 5],
+            presetLabel: _pct,
+            accent: AppColors.accent,
+            onChanged: (v) => setState(() => _withdraw = v),
+          ),
+        ),
       ],
-      result: _SimpleResult(
-        accent: AppColors.accent,
-        headline: r.reached ? 'Passive income covers you' : 'Crossover around',
-        value: value,
-        footnote:
-            'Your ${_money.format(_corpus)} corpus throws off ${_money.format(r.passiveMonthlyNow)}/mo today — '
-            '${(r.coverPct * 100).toStringAsFixed(0)}% of your ${_money.format(_expense)} expenses. '
-            'Crossover needs a ${_money.format(r.targetCorpus)} corpus at ${_withdraw.toStringAsFixed(1)}% withdrawal.',
-      ),
+      results: [
+        _SimpleResult(
+          accent: AppColors.accent,
+          headline: r.reached ? 'Passive income covers you' : 'Crossover around',
+          value: value,
+          footnote:
+              'Your ${_money.format(_corpus)} corpus throws off ${_money.format(r.passiveMonthlyNow)}/mo today — '
+              '${(r.coverPct * 100).toStringAsFixed(0)}% of your ${_money.format(_expense)} expenses. '
+              'Crossover needs a ${_money.format(r.targetCorpus)} corpus at ${_withdraw.toStringAsFixed(1)}% withdrawal.',
+        ),
+        if (showChart)
+          _ChartCard(
+            title: 'Corpus vs crossover target',
+            xEnd: '${(r.months / 12).ceil()}y',
+            series: [
+              LineSeries('Corpus', path, AppColors.accent),
+              LineSeries('Target', List.filled(path.length, r.targetCorpus),
+                  AppColors.positive),
+            ],
+          ),
+      ],
     );
   }
 }
@@ -423,125 +917,33 @@ class _CrossoverState extends ConsumerState<CrossoverScreen> {
 // ---------------------------------------------------------------------------
 // Shared UI
 // ---------------------------------------------------------------------------
-class _CalcScaffold extends StatelessWidget {
+class _ChartCard extends StatelessWidget {
   final String title;
-  final List<Widget> sliders;
-  final Widget result;
-  const _CalcScaffold(
-      {required this.title, required this.sliders, required this.result});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          SectionCard(child: Column(children: sliders)),
-          const SizedBox(height: 16),
-          result,
-        ],
-      ),
-    );
-  }
-}
-
-class _CalcSlider extends StatelessWidget {
-  final String label;
-  final double value, min, max;
-  final int divisions;
-  final ValueChanged<double> onChanged;
-  final String display;
-  final Color accent;
-  const _CalcSlider(this.label, this.value, this.min, this.max, this.divisions,
-      this.onChanged, this.display,
-      {this.accent = AppColors.time});
-
-  /// Plain numeric string for prefilling / range hints (no currency or unit).
-  static String _plain(double v) =>
-      v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(2);
-
-  /// Tap the value to type an exact number — for precision the slider's
-  /// discrete steps can't hit. The result is clamped into [min, max] so the
-  /// Slider stays valid; the drag path is untouched.
-  Future<void> _editValue(BuildContext context) async {
-    final ctrl = TextEditingController(text: _plain(value));
-    final entered = await showDialog<double>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(label),
-        content: TextField(
-          controller: ctrl,
-          autofocus: true,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          inputFormatters: [
-            FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-          ],
-          decoration: InputDecoration(
-            hintText: 'Enter exact value',
-            helperText: 'Allowed range ${_plain(min)} – ${_plain(max)}',
-          ),
-          onSubmitted: (s) => Navigator.pop(ctx, double.tryParse(s)),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () =>
-                Navigator.pop(ctx, double.tryParse(ctrl.text)),
-            child: const Text('Set'),
-          ),
-        ],
-      ),
-    );
-    if (entered != null) onChanged(entered.clamp(min, max).toDouble());
-  }
+  final List<LineSeries> series;
+  final String xEnd;
+  const _ChartCard({
+    required this.title,
+    required this.series,
+    required this.xEnd,
+  });
 
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Flexible(child: Text(label, style: t.bodyMedium)),
-            // Tap the value to enter it precisely.
-            InkWell(
-              borderRadius: BorderRadius.circular(8),
-              onTap: () => _editValue(context),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(display,
-                        style: t.bodyLarge?.copyWith(
-                            color: accent, fontWeight: FontWeight.w600)),
-                    const SizedBox(width: 4),
-                    Icon(Icons.edit, size: 14, color: accent),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-        SliderTheme(
-          data: SliderTheme.of(context).copyWith(
-            activeTrackColor: accent,
-            thumbColor: accent,
-            overlayColor: accent.withValues(alpha: 0.15),
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: t.labelSmall),
+          const SizedBox(height: 16),
+          SimpleLineChart(
+            series: series,
+            yTopLabel: moneyShort,
+            xEndLabel: (_) => xEnd,
+            xStartLabel: 'now',
           ),
-          child: Slider(
-            value: value.clamp(min, max),
-            min: min,
-            max: max,
-            divisions: divisions,
-            onChanged: onChanged,
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

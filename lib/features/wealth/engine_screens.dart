@@ -4,10 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/finance/engines.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/util/formatters.dart';
 import '../../data/models/expense.dart';
 import '../../state/app_providers.dart';
 import '../../widgets/line_chart.dart';
 import '../../widgets/section_card.dart';
+import '../../widgets/value_field.dart';
+import '../tools/guided_tool_flow.dart';
 import 'engine_kit.dart';
 
 // Distinct line/slice colours from the Midnight-Mono palette.
@@ -24,6 +27,11 @@ const Map<AssetClass, Color> _assetColors = {
   AssetClass.silver: _cSilver,
   AssetClass.cash: _cRed,
 };
+
+String _pct(double p) => p == p.roundToDouble()
+    ? '${p.toStringAsFixed(0)}%'
+    : '${p.toStringAsFixed(1)}%';
+String _yrsLabel(double p) => '${p.round()} yrs';
 
 // ===========================================================================
 // 1. Asset Allocation (5 classes + advanced settings + scenario comparison)
@@ -80,39 +88,72 @@ class _AssetAllocationState extends State<AssetAllocationScreen> {
       weights: _weights,
       returns: _returns,
     );
+    final onPreset = _mapEquals(_weights, _profile.presetWeights);
 
-    return EngineScaffold(
+    return GuidedToolFlow(
       title: 'Spread your money',
-      children: [
-        EngineInputs(children: [
-          EngineSlider('Investment capital', _capital, 5000, 100000000, 199,
-              (v) => setState(() => _capital = v), money.format(_capital),
-              accent: _cBlue),
-          EngineSlider('Time period', _years, 1, 40, 39,
-              (v) => setState(() => _years = v), '${_years.round()} yrs',
-              accent: _cBlue),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text('Risk profile', style: t.bodyMedium),
+      accent: _cBlue,
+      questions: [
+        ToolQuestion(
+          question: 'How much are you investing?',
+          help: 'The lump sum you want to spread across asset classes.',
+          label: 'Capital',
+          answer: money.format(_capital),
+          input: ValueField(
+            label: 'Investment capital',
+            value: _capital,
+            min: 5000,
+            max: 1000000000,
+            prefix: '₹ ',
+            presets: const [100000, 500000, 1000000, 10000000],
+            presetLabel: moneyCompact,
+            accent: _cBlue,
+            onChanged: (v) => setState(() => _capital = v),
           ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
+        ),
+        ToolQuestion(
+          question: 'For how many years?',
+          label: 'Period',
+          answer: '${_years.round()} yrs',
+          input: ValueField(
+            label: 'Time period',
+            value: _years,
+            min: 1,
+            max: 60,
+            suffix: 'yrs',
+            presets: const [5, 10, 15, 20, 30],
+            presetLabel: _yrsLabel,
+            accent: _cBlue,
+            onChanged: (v) => setState(() => _years = v),
+          ),
+        ),
+        ToolQuestion(
+          question: 'How much risk suits you?',
+          help: 'Sets the starting split — you can fine-tune every weight later.',
+          label: 'Risk',
+          answer: onPreset ? _profile.label : 'Custom',
+          input: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              for (final p in RiskProfile.values)
-                ChoiceChip(
-                  label: Text(p.label),
-                  selected: _profile == p &&
-                      _mapEquals(_weights, p.presetWeights),
-                  onSelected: (_) => _selectProfile(p),
-                ),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final p in RiskProfile.values)
+                    ChoiceChip(
+                      label: Text(p.label),
+                      selected: _profile == p && onPreset,
+                      onSelected: (_) => _selectProfile(p),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(_profile.blurb, style: t.bodySmall),
             ],
           ),
-          const SizedBox(height: 4),
-          Text(_profile.blurb, style: t.bodySmall),
-        ]),
-        const SizedBox(height: 16),
+        ),
+      ],
+      results: [
         SectionCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -135,7 +176,6 @@ class _AssetAllocationState extends State<AssetAllocationScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 16),
         EngineResult(
           accent: _cMint,
           headline: 'Projected value in ${_years.round()} years',
@@ -144,7 +184,6 @@ class _AssetAllocationState extends State<AssetAllocationScreen> {
               'Gain of ${money.format(r.gain)} at a blended ${r.blendedReturnPct.toStringAsFixed(1)}% p.a. '
               'Indicative, not guaranteed.',
         ),
-        const SizedBox(height: 16),
         SectionCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -159,7 +198,6 @@ class _AssetAllocationState extends State<AssetAllocationScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 16),
         // ---- Scenario comparison ----
         SectionCard(
           child: Column(
@@ -175,7 +213,6 @@ class _AssetAllocationState extends State<AssetAllocationScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 16),
         // ---- Advanced settings ----
         SectionCard(
           child: Column(
@@ -194,12 +231,21 @@ class _AssetAllocationState extends State<AssetAllocationScreen> {
               if (_advanced) ...[
                 const SizedBox(height: 12),
                 Text('Expected annual returns (%)', style: t.labelSmall),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 for (final c in AssetClass.values)
-                  EngineSlider(c.label, _returns[c]!, 0, 30, 60,
-                      (v) => setState(() => _returns[c] = v),
-                      '${_returns[c]!.toStringAsFixed(1)}%',
-                      accent: _assetColors[c]!),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: ValueField(
+                      label: c.label,
+                      value: _returns[c]!,
+                      min: 0,
+                      max: 40,
+                      suffix: '%',
+                      decimal: true,
+                      accent: _assetColors[c]!,
+                      onChanged: (v) => setState(() => _returns[c] = v),
+                    ),
+                  ),
                 const Divider(height: 28),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -361,37 +407,109 @@ class _HealthState extends ConsumerState<FinancialHealthScreen> {
     final saving = (_income - _spend).clamp(0, _income).toDouble();
     final double savePct = _income > 0 ? saving / _income * 100 : 0.0;
 
-    return EngineScaffold(
+    return GuidedToolFlow(
       title: 'Money health check',
-      children: [
-        // Who is this for?
-        SectionCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Who are we checking?', style: t.labelSmall),
-              const SizedBox(height: 10),
-              SegmentedButton<_HealthFor>(
-                segments: const [
-                  ButtonSegment(
-                      value: _HealthFor.myself, label: Text('Myself')),
-                  ButtonSegment(
-                      value: _HealthFor.someoneElse,
-                      label: Text('Someone else')),
-                ],
-                selected: {_who},
-                onSelectionChanged: (s) => _setWho(s.first),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                  _who == _HealthFor.myself
-                      ? 'Prefilled from your profile & spending — tweak any value below.'
-                      : 'Enter their numbers below.',
-                  style: t.bodySmall),
+      accent: _cMint,
+      questions: [
+        ToolQuestion(
+          question: 'Who are we checking?',
+          help: _who == _HealthFor.myself
+              ? 'Prefilled from your profile & spending — tweak any answer.'
+              : 'Enter their numbers in the next questions.',
+          label: 'For',
+          answer: _who == _HealthFor.myself ? 'Myself' : 'Someone else',
+          input: SegmentedButton<_HealthFor>(
+            segments: const [
+              ButtonSegment(value: _HealthFor.myself, label: Text('Myself')),
+              ButtonSegment(
+                  value: _HealthFor.someoneElse, label: Text('Someone else')),
             ],
+            selected: {_who},
+            onSelectionChanged: (s) => _setWho(s.first),
           ),
         ),
-        const SizedBox(height: 16),
+        ToolQuestion(
+          question: "What's the monthly income?",
+          label: 'Income',
+          answer: money.format(_income),
+          input: ValueField(
+            label: 'Monthly income',
+            value: _income,
+            min: 1000,
+            max: 100000000,
+            prefix: '₹ ',
+            accent: _cMint,
+            onChanged: (v) => setState(() => _income = v),
+          ),
+        ),
+        ToolQuestion(
+          question: 'How much goes out every month?',
+          help:
+              'Saving ${money.format(saving)}/mo · ${savePct.toStringAsFixed(0)}% of income.',
+          label: 'Spending',
+          answer: money.format(_spend),
+          input: ValueField(
+            label: 'Monthly spending',
+            value: _spend,
+            min: 0,
+            max: 100000000,
+            prefix: '₹ ',
+            accent: _cAmber,
+            onChanged: (v) => setState(() => _spend = v),
+          ),
+        ),
+        ToolQuestion(
+          question: 'How much of that spending is wants?',
+          help: 'Non-essentials — eating out, OTT, shopping, upgrades.',
+          label: 'Wants',
+          answer: '${_wantsPct.round()}%',
+          input: ValueField(
+            label: 'Wants share of spending',
+            value: _wantsPct,
+            min: 0,
+            max: 100,
+            suffix: '%',
+            presets: const [20, 30, 40, 50],
+            presetLabel: _pct,
+            accent: _cAmber,
+            onChanged: (v) => setState(() => _wantsPct = v),
+          ),
+        ),
+        ToolQuestion(
+          question: 'How many months could the emergency fund cover?',
+          help: '6 months of expenses is the classic target.',
+          label: 'Emergency',
+          answer: '${_emergency.toStringAsFixed(1)} mo',
+          input: ValueField(
+            label: 'Emergency fund',
+            value: _emergency,
+            min: 0,
+            max: 24,
+            suffix: 'months',
+            decimal: true,
+            presets: const [0, 3, 6, 12],
+            presetLabel: (p) => '${p.round()} mo',
+            accent: _cMint,
+            onChanged: (v) => setState(() => _emergency = v),
+          ),
+        ),
+        ToolQuestion(
+          question: 'Any monthly EMIs or debt payments?',
+          help: 'Loans, credit-card dues — enter 0 if none.',
+          label: 'EMIs',
+          answer: money.format(_emi),
+          input: ValueField(
+            label: 'Monthly EMIs / debt',
+            value: _emi,
+            min: 0,
+            max: 10000000,
+            prefix: '₹ ',
+            accent: _cRed,
+            onChanged: (v) => setState(() => _emi = v),
+          ),
+        ),
+      ],
+      results: [
         SectionCard(
           child: Column(
             children: [
@@ -407,11 +525,13 @@ class _HealthState extends ConsumerState<FinancialHealthScreen> {
                 ],
               ),
               const SizedBox(height: 8),
-              Text('Out of 100, from the numbers below.', style: t.bodySmall),
+              Text(
+                  'Out of 100, from your answers. A rule-of-thumb score, '
+                  'not financial advice.',
+                  style: t.bodySmall),
             ],
           ),
         ),
-        const SizedBox(height: 16),
         SectionCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -439,36 +559,6 @@ class _HealthState extends ConsumerState<FinancialHealthScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 16),
-        EngineInputs(children: [
-          Text('The numbers', style: t.bodyMedium),
-          const SizedBox(height: 8),
-          EngineSlider('Monthly income', _income, 1000, 1000000, 200,
-              (v) => setState(() => _income = v), money.format(_income),
-              accent: _cMint),
-          EngineSlider('Monthly spending', _spend, 0, 1000000, 200,
-              (v) => setState(() => _spend = v), money.format(_spend),
-              accent: _cAmber),
-          Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                  'Saving ${money.format(saving)}/mo · ${savePct.toStringAsFixed(0)}% of income',
-                  style: t.bodySmall?.copyWith(color: _cMint)),
-            ),
-          ),
-          EngineSlider('Wants share of spending', _wantsPct, 0, 100, 100,
-              (v) => setState(() => _wantsPct = v), '${_wantsPct.round()}%',
-              accent: _cAmber),
-          EngineSlider('Emergency fund', _emergency, 0, 12, 24,
-              (v) => setState(() => _emergency = v),
-              '${_emergency.toStringAsFixed(1)} mo',
-              accent: _cMint),
-          EngineSlider('Monthly EMIs / debt', _emi, 0, 1000000, 100,
-              (v) => setState(() => _emi = v), money.format(_emi),
-              accent: _cRed),
-        ]),
       ],
     );
   }
@@ -531,25 +621,77 @@ class _SwpState extends State<SwpGoldScreen> {
     );
     final ok = r.sustains;
 
-    return EngineScaffold(
+    return GuidedToolFlow(
       title: 'Live off your savings',
-      children: [
-        EngineInputs(children: [
-          EngineSlider('Total investment', _corpus, 100000, 100000000, 199,
-              (v) => setState(() => _corpus = v), money.format(_corpus),
-              accent: _cAmber),
-          EngineSlider('Expected return', _return, 1, 15, 56,
-              (v) => setState(() => _return = v),
-              '${_return.toStringAsFixed(1)}% p.a.',
-              accent: _cAmber),
-          EngineSlider('Monthly withdrawal', _withdraw, 1000, 500000, 499,
-              (v) => setState(() => _withdraw = v), money.format(_withdraw),
-              accent: _cAmber),
-          EngineSlider('Duration', _years, 1, 40, 39,
-              (v) => setState(() => _years = v), '${_years.round()} yrs',
-              accent: _cAmber),
-        ]),
-        const SizedBox(height: 16),
+      accent: _cAmber,
+      questions: [
+        ToolQuestion(
+          question: 'How big is the corpus you want to live off?',
+          label: 'Corpus',
+          answer: money.format(_corpus),
+          input: ValueField(
+            label: 'Total investment',
+            value: _corpus,
+            min: 100000,
+            max: 1000000000,
+            prefix: '₹ ',
+            presets: const [2500000, 5000000, 10000000, 50000000],
+            presetLabel: moneyCompact,
+            accent: _cAmber,
+            onChanged: (v) => setState(() => _corpus = v),
+          ),
+        ),
+        ToolQuestion(
+          question: 'What annual return will it keep earning?',
+          help:
+              'A withdrawn corpus usually sits in safer assets — 7–9% is typical.',
+          label: 'Return',
+          answer: _pct(_return),
+          input: ValueField(
+            label: 'Expected return',
+            value: _return,
+            min: 1,
+            max: 20,
+            suffix: '% p.a.',
+            decimal: true,
+            presets: const [6, 7, 8, 10],
+            presetLabel: _pct,
+            accent: _cAmber,
+            onChanged: (v) => setState(() => _return = v),
+          ),
+        ),
+        ToolQuestion(
+          question: 'How much will you withdraw every month?',
+          label: 'Withdrawal',
+          answer: money.format(_withdraw),
+          input: ValueField(
+            label: 'Monthly withdrawal',
+            value: _withdraw,
+            min: 1000,
+            max: 100000000,
+            prefix: '₹ ',
+            accent: _cAmber,
+            onChanged: (v) => setState(() => _withdraw = v),
+          ),
+        ),
+        ToolQuestion(
+          question: 'For how many years should it last?',
+          label: 'Duration',
+          answer: '${_years.round()} yrs',
+          input: ValueField(
+            label: 'Duration',
+            value: _years,
+            min: 1,
+            max: 60,
+            suffix: 'yrs',
+            presets: const [10, 20, 30, 40],
+            presetLabel: _yrsLabel,
+            accent: _cAmber,
+            onChanged: (v) => setState(() => _years = v),
+          ),
+        ),
+      ],
+      results: [
         EngineResult(
           accent: ok ? _cMint : _cRed,
           headline: ok ? 'Corpus sustains' : 'Corpus runs out',
@@ -562,7 +704,6 @@ class _SwpState extends State<SwpGoldScreen> {
               : 'Withdrawals outpace returns. You withdraw ${money.format(r.totalWithdrawn)} before it empties in '
                   '${(r.depletedMonth! / 12).toStringAsFixed(1)} years. Lower the withdrawal or raise the corpus.',
         ),
-        const SizedBox(height: 16),
         SectionCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -602,6 +743,24 @@ class _GoldState extends State<GoldReturnsScreen> {
   double _digiBuy = 3, _digiSell = 0.5;
   bool _advanced = false;
 
+  Widget _feeField(String label, double value, double max,
+      ValueChanged<double> onChanged, Color accent,
+      {String suffix = '%'}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: ValueField(
+        label: label,
+        value: value,
+        min: 0,
+        max: max,
+        suffix: suffix,
+        decimal: true,
+        accent: accent,
+        onChanged: onChanged,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
@@ -619,35 +778,62 @@ class _GoldState extends State<GoldReturnsScreen> {
     );
     final colors = {'Physical': _cAmber, 'Digital': _cBlue, 'ETF': _cMint};
 
-    return EngineScaffold(
+    return GuidedToolFlow(
       title: 'Which gold to buy',
-      children: [
-        EngineInputs(children: [
-          EngineSlider('Investment capital', _capital, 10000, 10000000, 199,
-              (v) => setState(() => _capital = v), money.format(_capital),
-              accent: _cAmber),
-          EngineSlider('Expected return', _return, 1, 30, 58,
-              (v) => setState(() => _return = v),
-              '${_return.toStringAsFixed(1)}% p.a.',
-              accent: _cAmber),
-          EngineSlider('Time period', _years, 1, 40, 39,
-              (v) => setState(() => _years = v), '${_years.round()} yrs',
-              accent: _cAmber),
-        ]),
-        const SizedBox(height: 12),
-        Text('ETF parameters', style: t.bodyMedium),
-        const SizedBox(height: 8),
-        EngineInputs(children: [
-          EngineSlider('Expense ratio', _expense, 0.01, 2.0, 199,
-              (v) => setState(() => _expense = v),
-              '${_expense.toStringAsFixed(2)}%',
-              accent: _cMint),
-          EngineSlider('Tracking error', _tracking, 0.01, 1.0, 99,
-              (v) => setState(() => _tracking = v),
-              '${_tracking.toStringAsFixed(2)}%',
-              accent: _cMint),
-        ]),
-        const SizedBox(height: 16),
+      accent: _cAmber,
+      questions: [
+        ToolQuestion(
+          question: 'How much are you putting into gold?',
+          label: 'Capital',
+          answer: money.format(_capital),
+          input: ValueField(
+            label: 'Investment capital',
+            value: _capital,
+            min: 1000,
+            max: 1000000000,
+            prefix: '₹ ',
+            presets: const [50000, 100000, 500000, 1000000],
+            presetLabel: moneyCompact,
+            accent: _cAmber,
+            onChanged: (v) => setState(() => _capital = v),
+          ),
+        ),
+        ToolQuestion(
+          question: 'What annual gold return do you expect?',
+          help: 'Rupee gold has returned roughly 9–11% p.a. over the long run.',
+          label: 'Return',
+          answer: _pct(_return),
+          input: ValueField(
+            label: 'Expected return',
+            value: _return,
+            min: 1,
+            max: 30,
+            suffix: '% p.a.',
+            decimal: true,
+            presets: const [8, 10, 11, 12],
+            presetLabel: _pct,
+            accent: _cAmber,
+            onChanged: (v) => setState(() => _return = v),
+          ),
+        ),
+        ToolQuestion(
+          question: 'For how many years will you hold it?',
+          label: 'Period',
+          answer: '${_years.round()} yrs',
+          input: ValueField(
+            label: 'Time period',
+            value: _years,
+            min: 1,
+            max: 60,
+            suffix: 'yrs',
+            presets: const [5, 10, 15, 20],
+            presetLabel: _yrsLabel,
+            accent: _cAmber,
+            onChanged: (v) => setState(() => _years = v),
+          ),
+        ),
+      ],
+      results: [
         EngineResult(
           accent: colors[r.best.name]!,
           headline: 'Best after fees (${r.best.name})',
@@ -656,7 +842,6 @@ class _GoldState extends State<GoldReturnsScreen> {
               'Same ${_return.toStringAsFixed(1)}% gold move on ${money.format(_capital)} for ${_years.round()} years. '
               'Fee-free that would be ${money.format(r.gross)}.',
         ),
-        const SizedBox(height: 16),
         SectionCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -673,7 +858,6 @@ class _GoldState extends State<GoldReturnsScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 16),
         SectionCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -693,29 +877,29 @@ class _GoldState extends State<GoldReturnsScreen> {
                     style: t.bodySmall),
               if (_advanced) ...[
                 const SizedBox(height: 12),
+                Text('ETF', style: t.labelSmall),
+                const SizedBox(height: 12),
+                _feeField('Expense ratio', _expense, 2,
+                    (v) => setState(() => _expense = v), _cMint),
+                _feeField('Tracking error', _tracking, 1,
+                    (v) => setState(() => _tracking = v), _cMint),
+                const Divider(height: 24),
                 Text('Physical gold', style: t.labelSmall),
-                EngineSlider('Making / wastage', _physMaking, 0, 15, 150,
-                    (v) => setState(() => _physMaking = v),
-                    '${_physMaking.toStringAsFixed(1)}%',
-                    accent: _cAmber),
-                EngineSlider('Storage / year', _physStorage, 0, 3, 60,
-                    (v) => setState(() => _physStorage = v),
-                    '${_physStorage.toStringAsFixed(2)}%/yr',
-                    accent: _cAmber),
-                EngineSlider('Sell spread', _physSell, 0, 5, 100,
-                    (v) => setState(() => _physSell = v),
-                    '${_physSell.toStringAsFixed(1)}%',
-                    accent: _cAmber),
+                const SizedBox(height: 12),
+                _feeField('Making / wastage', _physMaking, 15,
+                    (v) => setState(() => _physMaking = v), _cAmber),
+                _feeField('Storage / year', _physStorage, 3,
+                    (v) => setState(() => _physStorage = v), _cAmber,
+                    suffix: '%/yr'),
+                _feeField('Sell spread', _physSell, 5,
+                    (v) => setState(() => _physSell = v), _cAmber),
                 const Divider(height: 24),
                 Text('Digital gold', style: t.labelSmall),
-                EngineSlider('Buy cost (incl. GST)', _digiBuy, 0, 10, 100,
-                    (v) => setState(() => _digiBuy = v),
-                    '${_digiBuy.toStringAsFixed(1)}%',
-                    accent: _cBlue),
-                EngineSlider('Sell spread', _digiSell, 0, 5, 100,
-                    (v) => setState(() => _digiSell = v),
-                    '${_digiSell.toStringAsFixed(1)}%',
-                    accent: _cBlue),
+                const SizedBox(height: 12),
+                _feeField('Buy cost (incl. GST)', _digiBuy, 10,
+                    (v) => setState(() => _digiBuy = v), _cBlue),
+                _feeField('Sell spread', _digiSell, 5,
+                    (v) => setState(() => _digiSell = v), _cBlue),
               ],
             ],
           ),
@@ -753,7 +937,11 @@ class _DebtEngineState extends State<DebtEngineScreen> {
             onSelectionChanged: (s) => setState(() => _tab = s.first),
           ),
           const SizedBox(height: 16),
-          if (_tab == 0) const _SingleLoanView() else const _PortfolioView(),
+          // IndexedStack keeps both tabs' state (flow position, loans) alive.
+          IndexedStack(
+            index: _tab,
+            children: const [_SingleLoanView(), _PortfolioView()],
+          ),
         ],
       ),
     );
@@ -792,63 +980,66 @@ class _SingleLoanViewState extends State<_SingleLoanView> {
       return m > 0 ? '${y}y ${m}m' : '${y}y';
     }
 
-    return Column(
-      children: [
-        EngineInputs(children: [
-          EngineSlider('Loan amount', _loan, 50000, 50000000, 199,
-              (v) => setState(() => _loan = v), money.format(_loan),
-              accent: _cRed),
-          EngineSlider('Interest rate', _rate, 1, 24, 46,
-              (v) => setState(() => _rate = v),
-              '${_rate.toStringAsFixed(1)}% p.a.',
-              accent: _cRed),
-          EngineSlider('Tenure', _tenure, 1, 30, 29,
-              (v) => setState(() => _tenure = v), '${_tenure.round()} yrs',
-              accent: _cRed),
-        ]),
-        const SizedBox(height: 12),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: Text('Pay it off faster (optional)', style: t.bodyMedium),
+    return GuidedToolFlow(
+      embedded: true,
+      accent: _cRed,
+      questions: [
+        ToolQuestion(
+          question: 'How much is the loan?',
+          label: 'Loan',
+          answer: money.format(_loan),
+          input: ValueField(
+            label: 'Loan amount',
+            value: _loan,
+            min: 10000,
+            max: 1000000000,
+            prefix: '₹ ',
+            presets: const [500000, 1000000, 2500000, 5000000],
+            presetLabel: moneyCompact,
+            accent: _cRed,
+            onChanged: (v) => setState(() => _loan = v),
+          ),
         ),
-        const SizedBox(height: 8),
-        EngineInputs(children: [
-          EngineSlider('Extra EMIs / year', _extraEmis, 0, 6, 6,
-              (v) => setState(() => _extraEmis = v), '${_extraEmis.round()}',
-              accent: _cMint),
-          EngineSlider('Annual EMI step-up', _stepUp, 0, 20, 40,
-              (v) => setState(() => _stepUp = v),
-              '${_stepUp.toStringAsFixed(0)}%',
-              accent: _cMint),
-          EngineSlider('Lumpsum prepayment', _lumpsum, 0, 5000000, 100,
-              (v) => setState(() => _lumpsum = v), money.format(_lumpsum),
-              accent: _cMint),
-          if (_lumpsum > 0) ...[
-            EngineSlider('Lumpsum at month', _lumpMonth, 1, _tenure * 12, 100,
-                (v) => setState(() => _lumpMonth = v),
-                'month ${_lumpMonth.round()}',
-                accent: _cMint),
-            const SizedBox(height: 8),
-            SegmentedButton<LumpsumMode>(
-              segments: const [
-                ButtonSegment(
-                    value: LumpsumMode.tenureReducing,
-                    label: Text('Tenure −')),
-                ButtonSegment(
-                    value: LumpsumMode.emiReducing, label: Text('EMI −')),
-              ],
-              selected: {_mode},
-              onSelectionChanged: (s) => setState(() => _mode = s.first),
-            ),
-            const SizedBox(height: 4),
-            Text(
-                _mode == LumpsumMode.tenureReducing
-                    ? 'EMI stays the same — your loan ends earlier.'
-                    : 'Tenure stays the same — your EMI drops after the lumpsum month.',
-                style: t.bodySmall),
-          ],
-        ]),
-        const SizedBox(height: 16),
+        ToolQuestion(
+          question: "What's the interest rate?",
+          help: 'Home loans run ~8–9.5%, car ~9–12%, personal ~11–18%.',
+          label: 'Rate',
+          answer: _pct(_rate),
+          input: ValueField(
+            label: 'Interest rate',
+            value: _rate,
+            min: 1,
+            max: 36,
+            suffix: '% p.a.',
+            decimal: true,
+            presets: const [8.5, 9.5, 10.5, 12],
+            presetLabel: _pct,
+            accent: _cRed,
+            onChanged: (v) => setState(() => _rate = v),
+          ),
+        ),
+        ToolQuestion(
+          question: 'Over how many years?',
+          label: 'Tenure',
+          answer: '${_tenure.round()} yrs',
+          input: ValueField(
+            label: 'Tenure',
+            value: _tenure,
+            min: 1,
+            max: 30,
+            suffix: 'yrs',
+            presets: const [5, 10, 15, 20],
+            presetLabel: _yrsLabel,
+            accent: _cRed,
+            onChanged: (v) => setState(() {
+              _tenure = v;
+              // Keep the prepayment month inside the new tenure.
+              if (_lumpMonth > v * 12) _lumpMonth = v * 12;
+            }),
+          ),
+        ),
+      ],
+      results: [
         EngineResult(
           accent: _cRed,
           headline: 'Monthly EMI',
@@ -858,8 +1049,83 @@ class _SingleLoanViewState extends State<_SingleLoanView> {
               '${money.format(r.baseInterest)} interest over ${yrMo(r.baseMonths)} '
               '(${money.format(r.baseTotalPaid)} total).',
         ),
+        // Accelerators live on the result page — tweak them and watch the
+        // savings update without re-running the questions.
+        SectionCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Pay it off faster (optional)', style: t.titleMedium),
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: ValueField(
+                  label: 'Extra EMIs / year',
+                  value: _extraEmis,
+                  min: 0,
+                  max: 6,
+                  presets: const [0, 1, 2],
+                  presetLabel: (p) => p.round().toString(),
+                  accent: _cMint,
+                  onChanged: (v) => setState(() => _extraEmis = v),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: ValueField(
+                  label: 'Annual EMI step-up',
+                  value: _stepUp,
+                  min: 0,
+                  max: 20,
+                  suffix: '%',
+                  decimal: true,
+                  accent: _cMint,
+                  onChanged: (v) => setState(() => _stepUp = v),
+                ),
+              ),
+              ValueField(
+                label: 'Lumpsum prepayment',
+                value: _lumpsum,
+                min: 0,
+                max: 1000000000,
+                prefix: '₹ ',
+                accent: _cMint,
+                onChanged: (v) => setState(() => _lumpsum = v),
+              ),
+              if (_lumpsum > 0) ...[
+                const SizedBox(height: 12),
+                ValueField(
+                  label: 'Lumpsum at month',
+                  value: _lumpMonth,
+                  min: 1,
+                  max: _tenure.round() * 12,
+                  suffix: 'mo',
+                  accent: _cMint,
+                  onChanged: (v) => setState(() => _lumpMonth = v),
+                ),
+                const SizedBox(height: 12),
+                SegmentedButton<LumpsumMode>(
+                  segments: const [
+                    ButtonSegment(
+                        value: LumpsumMode.tenureReducing,
+                        label: Text('Tenure −')),
+                    ButtonSegment(
+                        value: LumpsumMode.emiReducing, label: Text('EMI −')),
+                  ],
+                  selected: {_mode},
+                  onSelectionChanged: (s) => setState(() => _mode = s.first),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                    _mode == LumpsumMode.tenureReducing
+                        ? 'EMI stays the same — your loan ends earlier.'
+                        : 'Tenure stays the same — your EMI drops after the lumpsum month.',
+                    style: t.bodySmall),
+              ],
+            ],
+          ),
+        ),
         if (accelerated) ...[
-          const SizedBox(height: 16),
           if (emiReducing)
             EngineResult(
               accent: _cMint,
@@ -879,7 +1145,6 @@ class _SingleLoanViewState extends State<_SingleLoanView> {
                   'cleared in ${yrMo(r.accelMonths)} instead of ${yrMo(r.baseMonths)}.',
             ),
         ],
-        const SizedBox(height: 16),
         SectionCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1069,22 +1334,34 @@ class _PortfolioViewState extends State<_PortfolioView> {
           label: const Text('Add loan'),
         ),
         const SizedBox(height: 16),
-        EngineInputs(children: [
-          EngineSlider('Extra monthly payment', _extra, 0, 200000, 200,
-              (v) => setState(() => _extra = v), money.format(_extra),
-              accent: _cMint),
-          const SizedBox(height: 8),
-          SegmentedButton<DebtStrategy>(
-            segments: [
-              for (final s in DebtStrategy.values)
-                ButtonSegment(value: s, label: Text(s.label)),
+        SectionCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ValueField(
+                label: 'Extra monthly payment',
+                value: _extra,
+                min: 0,
+                max: 10000000,
+                prefix: '₹ ',
+                presets: const [5000, 10000, 25000, 50000],
+                accent: _cMint,
+                onChanged: (v) => setState(() => _extra = v),
+              ),
+              const SizedBox(height: 12),
+              SegmentedButton<DebtStrategy>(
+                segments: [
+                  for (final s in DebtStrategy.values)
+                    ButtonSegment(value: s, label: Text(s.label)),
+                ],
+                selected: {_strategy},
+                onSelectionChanged: (s) => setState(() => _strategy = s.first),
+              ),
+              const SizedBox(height: 4),
+              Text(_strategy.blurb, style: t.bodySmall),
             ],
-            selected: {_strategy},
-            onSelectionChanged: (s) => setState(() => _strategy = s.first),
           ),
-          const SizedBox(height: 4),
-          Text(_strategy.blurb, style: t.bodySmall),
-        ]),
+        ),
         const SizedBox(height: 16),
         if (chosen != null) ...[
           EngineResult(
@@ -1171,30 +1448,73 @@ class _LegacyState extends State<ChildLegacyScreen> {
     );
     final colors = {'PPF': _cBlue, 'SSY': _cAmber, 'SIP': _cMint};
 
-    return EngineScaffold(
+    return GuidedToolFlow(
       title: 'Save for your child',
-      children: [
-        EngineInputs(children: [
-          EngineSlider("Child's age now", _currentAge, 0, 17, 17,
-              (v) => setState(() => _currentAge = v),
-              '${_currentAge.round()} yrs', accent: _cBlue),
-          EngineSlider('Corpus release age', _targetAge, 1, 25, 24,
-              (v) => setState(() => _targetAge = v),
-              '${_targetAge.round()} yrs', accent: _cBlue),
-          EngineSlider('Monthly investment', _monthly, 500, 50000, 99,
-              (v) => setState(() => _monthly = v), money.format(_monthly),
-              accent: _cBlue),
-        ]),
-        const SizedBox(height: 16),
+      accent: _cBlue,
+      questions: [
+        ToolQuestion(
+          question: 'How old is your child now?',
+          help: 'SSY can only be opened for a girl child under 10.',
+          label: 'Age now',
+          answer: '${_currentAge.round()} yrs',
+          input: ValueField(
+            label: "Child's age now",
+            value: _currentAge,
+            min: 0,
+            max: 17,
+            suffix: 'yrs',
+            accent: _cBlue,
+            onChanged: (v) => setState(() => _currentAge = v),
+          ),
+        ),
+        ToolQuestion(
+          question: 'At what age should the money unlock?',
+          help: 'College at 18, marriage or a head start at 21–25.',
+          label: 'Unlock age',
+          answer: '${_targetAge.round()} yrs',
+          input: ValueField(
+            label: 'Corpus release age',
+            value: _targetAge,
+            min: 1,
+            max: 25,
+            suffix: 'yrs',
+            presets: const [18, 21, 25],
+            presetLabel: _yrsLabel,
+            accent: _cBlue,
+            onChanged: (v) => setState(() => _targetAge = v),
+          ),
+        ),
+        ToolQuestion(
+          question: 'How much can you invest monthly?',
+          label: 'Monthly',
+          answer: money.format(_monthly),
+          input: ValueField(
+            label: 'Monthly investment',
+            value: _monthly,
+            min: 100,
+            max: 10000000,
+            prefix: '₹ ',
+            presets: const [2000, 5000, 10000, 12500],
+            accent: _cBlue,
+            onChanged: (v) => setState(() => _monthly = v),
+          ),
+        ),
+      ],
+      results: [
         EngineResult(
           accent: _cMint,
           headline: 'Best outcome in ${r.years} years (${r.best.name})',
           value: money.format(r.best.corpus),
           footnote:
               'Investing ${money.format(_monthly)}/month for ${r.years} years. '
-              'PPF & SSY are capped at ₹12,500/mo by law — anything above only grows in SIP.',
+              'PPF & SSY deposits are capped at ₹1.5L/year (₹12,500/mo) — anything above only grows in SIP.',
         ),
-        const SizedBox(height: 16),
+        Text(
+          'SSY can only be opened for a girl child under 10; deposits run 15 years, maturity at 21. '
+          'PPF matures in 15 years (extendable). Simplified here: PPF 7.1% & SSY 8.2% (government rates, '
+          'revised quarterly) held constant; SIP 13% is an assumption.',
+          style: t.bodySmall,
+        ),
         SectionCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1211,7 +1531,6 @@ class _LegacyState extends State<ChildLegacyScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 16),
         SectionCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1261,36 +1580,96 @@ class _RetireEngineState extends State<RetirementEngineScreen> {
     );
     final colors = {'EPF': _cAmber, 'NPS': _cBlue, 'SIP': _cMint};
 
-    return EngineScaffold(
+    return GuidedToolFlow(
       title: 'Plan your retirement',
-      children: [
-        EngineInputs(children: [
-          EngineSlider('Current age', _currentAge, 18, 59, 41,
-              (v) => setState(() => _currentAge = v),
-              '${_currentAge.round()} yrs', accent: _cBlue),
-          EngineSlider('Retirement age', _retireAge, 40, 70, 30,
-              (v) => setState(() => _retireAge = v),
-              '${_retireAge.round()} yrs', accent: _cBlue),
-          EngineSlider('Monthly basic salary', _basic, 10000, 500000, 98,
-              (v) => setState(() => _basic = v), money.format(_basic),
-              accent: _cAmber),
-          EngineSlider('Monthly NPS', _nps, 0, 100000, 100,
-              (v) => setState(() => _nps = v), money.format(_nps),
-              accent: _cBlue),
-          EngineSlider('Monthly SIP', _sip, 0, 200000, 100,
-              (v) => setState(() => _sip = v), money.format(_sip),
-              accent: _cMint),
-        ]),
-        const SizedBox(height: 16),
+      accent: _cMint,
+      questions: [
+        ToolQuestion(
+          question: 'How old are you now?',
+          label: 'Age',
+          answer: '${_currentAge.round()} yrs',
+          input: ValueField(
+            label: 'Current age',
+            value: _currentAge,
+            min: 18,
+            max: 59,
+            suffix: 'yrs',
+            accent: _cBlue,
+            onChanged: (v) => setState(() => _currentAge = v),
+          ),
+        ),
+        ToolQuestion(
+          question: 'When do you want to retire?',
+          label: 'Retire at',
+          answer: '${_retireAge.round()} yrs',
+          input: ValueField(
+            label: 'Retirement age',
+            value: _retireAge,
+            min: 40,
+            max: 70,
+            suffix: 'yrs',
+            presets: const [55, 60, 65],
+            presetLabel: _yrsLabel,
+            accent: _cBlue,
+            onChanged: (v) => setState(() => _retireAge = v),
+          ),
+        ),
+        ToolQuestion(
+          question: "What's your monthly basic salary?",
+          help: 'Basic pay, not CTC — EPF contributions are calculated on it.',
+          label: 'Basic',
+          answer: money.format(_basic),
+          input: ValueField(
+            label: 'Monthly basic salary',
+            value: _basic,
+            min: 1000,
+            max: 100000000,
+            prefix: '₹ ',
+            accent: _cAmber,
+            onChanged: (v) => setState(() => _basic = v),
+          ),
+        ),
+        ToolQuestion(
+          question: 'How much goes to NPS every month?',
+          help: 'Enter 0 if you don\'t contribute to NPS.',
+          label: 'NPS',
+          answer: money.format(_nps),
+          input: ValueField(
+            label: 'Monthly NPS',
+            value: _nps,
+            min: 0,
+            max: 10000000,
+            prefix: '₹ ',
+            accent: _cBlue,
+            onChanged: (v) => setState(() => _nps = v),
+          ),
+        ),
+        ToolQuestion(
+          question: 'And how much SIP every month?',
+          help: 'Enter 0 if you don\'t run a SIP.',
+          label: 'SIP',
+          answer: money.format(_sip),
+          input: ValueField(
+            label: 'Monthly SIP',
+            value: _sip,
+            min: 0,
+            max: 10000000,
+            prefix: '₹ ',
+            accent: _cMint,
+            onChanged: (v) => setState(() => _sip = v),
+          ),
+        ),
+      ],
+      results: [
         EngineResult(
           accent: _cMint,
           headline: 'Total corpus at ${_retireAge.round()}',
           value: money.format(r.totalCorpus),
           footnote:
-              'Over ${r.years} working years. EPF is 24% of basic (₹${(_basic * 0.24).round()}/mo). '
+              'Over ${r.years} working years. EPF gets ₹${(_basic * 0.24 - WealthEngines.epsMonthly(_basic)).round()}/mo — '
+              'your 12% + employer 12% of basic, minus ₹${WealthEngines.epsMonthly(_basic).round()}/mo that goes to the EPS pension. '
               'You invest ${money.format(r.totalInvested)} in all.',
         ),
-        const SizedBox(height: 16),
         SectionCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1305,10 +1684,14 @@ class _RetireEngineState extends State<RetirementEngineScreen> {
                       '${money.format(i.monthly)}/mo · invested ${money.format(i.invested)}',
                   value: money.format(i.corpus),
                 ),
+              const SizedBox(height: 4),
+              Text(
+                  'EPF at the declared 8.25% (FY 2025-26, revised yearly); '
+                  'NPS 10% and SIP 13% are assumptions, not guarantees.',
+                  style: t.bodySmall),
             ],
           ),
         ),
-        const SizedBox(height: 16),
         SectionCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

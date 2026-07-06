@@ -3,7 +3,9 @@ import 'dart:math' as math;
 /// Pure financial math used by the Tools tab.
 class Calculators {
   /// SIP future value. [monthly] invested each month, [annualRatePct] expected
-  /// return, [years] horizon. Monthly compounding, contributions at period end.
+  /// return, [years] horizon. Monthly compounding with contributions at the
+  /// START of each month (annuity-due) — the convention Indian SIP calculators
+  /// (Groww, AMFI) use; hence the trailing ×(1+i).
   static SipResult sip({
     required double monthly,
     required double annualRatePct,

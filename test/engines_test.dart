@@ -13,11 +13,19 @@ void main() {
 
     test('working years', () => expect(r.years, 30));
 
-    test('EPF = 24% of basic, ~₹1.85cr at 8.25%/30y', () {
+    test('EPF = 24% of basic minus the EPS pension share', () {
       final epf = r.instruments.firstWhere((i) => i.name == 'EPF');
-      expect(epf.monthly, closeTo(12000, 0.001));
-      expect(epf.invested, closeTo(4320000, 1));
-      expect(epf.corpus, closeTo(18489110, 20000));
+      // Employer's 8.33% of basic (capped at ₹15k basic) funds EPS, not EPF:
+      // 12000 − 1249.50 = ₹10,750.50/mo actually lands in the EPF account.
+      expect(WealthEngines.epsMonthly(50000), closeTo(1249.5, 0.001));
+      expect(epf.monthly, closeTo(10750.5, 0.001));
+      expect(epf.invested, closeTo(10750.5 * 12 * 30, 1));
+      expect(epf.corpus,
+          closeTo(WealthEngines.fvAnnualDue(10750.5, 8.25, 30), 1));
+    });
+
+    test('EPS cap: low basic pays 8.33% uncapped', () {
+      expect(WealthEngines.epsMonthly(10000), closeTo(833, 0.001));
     });
 
     test('NPS ~₹1.0856cr at 10%/30y (exact)', () {

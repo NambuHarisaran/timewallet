@@ -48,4 +48,7 @@ class AnalyticsService {
   void reviewComplete({required String weekKey}) =>
       _log('review_complete', {'week': weekKey});
   void reviewShare() => _log('review_share');
+
+  // ---- Sharing (organic growth loop) ----
+  void shareImage() => _log('share_image');
 }

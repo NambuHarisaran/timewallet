@@ -7,8 +7,9 @@ import '../../core/util/formatters.dart';
 import '../../data/models/user_profile.dart';
 import '../../state/app_providers.dart';
 import '../../widgets/gradient_card.dart';
-import '../../widgets/responsive_body.dart';
 import '../../widgets/section_card.dart';
+import '../../widgets/value_field.dart';
+import '../tools/guided_tool_flow.dart';
 
 final _money = moneyFmt;
 
@@ -52,99 +53,123 @@ class _FutureYouState extends ConsumerState<FutureYouScreen> {
         ? (passiveMonthly / profile.monthlyMoney * 100)
         : 0.0;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Future You')),
-      body: ResponsiveBody(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'Redirect a habit into your future',
-              style: t.headlineMedium,
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'See what one monthly spend becomes if you invested it instead — '
-              'in rupees, and in years of your working life bought back.',
-              style: t.bodyMedium,
-            ),
-            const SizedBox(height: 20),
-
-            // ---- Hero: the life bought back ----
-            GradientCard(
-              colors: AppColors.heroPositive,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('FUTURE YOU COULD HAVE',
-                      style: t.labelSmall?.copyWith(color: Colors.white70)),
-                  const SizedBox(height: 8),
-                  Text(_money.format(corpus),
-                      style: t.displayLarge?.copyWith(color: Colors.white)),
-                  const SizedBox(height: 8),
-                  if (workYears > 0)
-                    Text(
-                      '≈ ${workYears.toStringAsFixed(1)} years of working life bought back',
-                      style: t.bodyLarge?.copyWith(color: Colors.white),
-                    )
-                  else if (workDays > 0)
-                    Text(
-                      '≈ ${workDays.round()} work-days of your life',
-                      style: t.bodyLarge?.copyWith(color: Colors.white),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            _slider('Monthly habit', _money.format(_monthly), _monthly, 200,
-                50000, 498, (v) => setState(() => _monthly = v)),
-            _quickAmounts(),
-            _slider('Expected return', '${_rate.toStringAsFixed(1)}% p.a.',
-                _rate, 1, 20, 38, (v) => setState(() => _rate = v)),
-            _slider('For how long', '${_years.toStringAsFixed(0)} years',
-                _years, 1, 40, 39, (v) => setState(() => _years = v)),
-
-            const SizedBox(height: 12),
-
-            // ---- Breakdown ----
-            SectionCard(
-              title: 'THE MATH',
-              child: Column(
-                children: [
-                  _row('You put in', _money.format(r.invested),
-                      AppColors.money),
-                  const SizedBox(height: 10),
-                  _row('Growth on top', _money.format(r.returns),
-                      AppColors.positive),
-                  const Divider(height: 28),
-                  _row('Passive income, forever',
-                      '${_money.format(passiveMonthly)}/mo', AppColors.time),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // ---- The punchline ----
-            SectionCard(
-              child: Row(
-                children: [
-                  const Icon(Icons.auto_awesome,
-                      color: AppColors.accent, size: 24),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      _punchline(workYears, passiveMonthly, coversPct, profile),
-                      style: t.bodyLarge,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 28),
-          ],
+    return GuidedToolFlow(
+      title: 'Future You',
+      accent: AppColors.positive,
+      questions: [
+        ToolQuestion(
+          question: "What's the monthly habit you could redirect?",
+          help:
+              'Food delivery, OTT stack, impulse shopping — any recurring spend you could invest instead.',
+          label: 'Habit',
+          answer: _money.format(_monthly),
+          input: ValueField(
+            label: 'Monthly habit',
+            value: _monthly,
+            min: 50,
+            max: 1000000,
+            prefix: '₹ ',
+            presets: const [500, 1000, 2000, 5000],
+            accent: AppColors.positive,
+            onChanged: (v) => setState(() => _monthly = v),
+          ),
         ),
-      ),
+        ToolQuestion(
+          question: 'What annual return do you expect?',
+          help:
+              'Long-run equity funds have averaged around 12% — assuming less is safer.',
+          label: 'Return',
+          answer: '${_rate.toStringAsFixed(1)}%',
+          input: ValueField(
+            label: 'Expected return',
+            value: _rate,
+            min: 1,
+            max: 30,
+            suffix: '% p.a.',
+            decimal: true,
+            presets: const [8, 10, 12, 15],
+            presetLabel: (p) => '${p.toStringAsFixed(0)}%',
+            accent: AppColors.positive,
+            onChanged: (v) => setState(() => _rate = v),
+          ),
+        ),
+        ToolQuestion(
+          question: 'For how long would you keep it up?',
+          label: 'Period',
+          answer: '${_years.toStringAsFixed(0)} yrs',
+          input: ValueField(
+            label: 'For how long',
+            value: _years,
+            min: 1,
+            max: 60,
+            suffix: 'yrs',
+            presets: const [10, 15, 20, 30],
+            presetLabel: (p) => '${p.round()} yrs',
+            accent: AppColors.positive,
+            onChanged: (v) => setState(() => _years = v),
+          ),
+        ),
+      ],
+      results: [
+        // ---- Hero: the life bought back ----
+        GradientCard(
+          colors: AppColors.heroPositive,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('FUTURE YOU COULD HAVE',
+                  style: t.labelSmall?.copyWith(color: Colors.white70)),
+              const SizedBox(height: 8),
+              Text(_money.format(corpus),
+                  style: t.displayLarge?.copyWith(color: Colors.white)),
+              const SizedBox(height: 8),
+              if (workYears > 0)
+                Text(
+                  '≈ ${workYears.toStringAsFixed(1)} years of working life bought back',
+                  style: t.bodyLarge?.copyWith(color: Colors.white),
+                )
+              else if (workDays > 0)
+                Text(
+                  '≈ ${workDays.round()} work-days of your life',
+                  style: t.bodyLarge?.copyWith(color: Colors.white),
+                ),
+            ],
+          ),
+        ),
+
+        // ---- Breakdown ----
+        SectionCard(
+          title: 'THE MATH',
+          child: Column(
+            children: [
+              _row('You put in', _money.format(r.invested), AppColors.money),
+              const SizedBox(height: 10),
+              _row('Growth on top', _money.format(r.returns),
+                  AppColors.positive),
+              const Divider(height: 28),
+              _row('Passive income (4% rule)',
+                  '${_money.format(passiveMonthly)}/mo', AppColors.time),
+            ],
+          ),
+        ),
+
+        // ---- The punchline ----
+        SectionCard(
+          child: Row(
+            children: [
+              const Icon(Icons.auto_awesome,
+                  color: AppColors.accent, size: 24),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  _punchline(workYears, passiveMonthly, coversPct, profile),
+                  style: t.bodyLarge,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -155,60 +180,15 @@ class _FutureYouState extends ConsumerState<FutureYouScreen> {
           'is the corpus this habit could build.';
     }
     if (coversPct >= 100) {
-      return 'That corpus alone could cover your entire monthly spend — '
-          'forever. This one habit could buy your freedom.';
+      return 'Withdrawing a safe 4% a year, that corpus alone could cover your '
+          'entire monthly spend. This one habit could buy your freedom.';
     }
     final yrs = workYears >= 1
         ? '${workYears.toStringAsFixed(1)} years'
         : '${(workYears * 12).round()} months';
     return 'Skipping this habit and investing it buys back about $yrs of '
-        'working life — and pays you ${_money.format(passiveMonthly)} every '
-        'month without you lifting a finger.';
-  }
-
-  Widget _quickAmounts() {
-    const presets = [500.0, 1000.0, 2000.0, 5000.0];
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Wrap(
-        spacing: 8,
-        children: presets.map((p) {
-          return ChoiceChip(
-            label: Text(_money.format(p)),
-            selected: _monthly == p,
-            onSelected: (_) => setState(() => _monthly = p),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  Widget _slider(String label, String value, double v, double min, double max,
-      int divisions, ValueChanged<double> onChanged) {
-    final t = Theme.of(context).textTheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(label, style: t.labelSmall),
-              Text(value,
-                  style: t.titleMedium?.copyWith(color: AppColors.accent)),
-            ],
-          ),
-          Slider(
-            value: v.clamp(min, max),
-            min: min,
-            max: max,
-            divisions: divisions,
-            onChanged: onChanged,
-          ),
-        ],
-      ),
-    );
+        'working life — and could pay you ${_money.format(passiveMonthly)} a '
+        'month at a safe 4% withdrawal rate.';
   }
 
   Widget _row(String label, String value, Color color) {

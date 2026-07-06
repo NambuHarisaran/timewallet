@@ -418,9 +418,14 @@ class WealthEngines {
     return LegacyResult(years: years, instruments: instruments);
   }
 
+  /// PPF and SSY both cap deposits at ₹1.5L per financial year — ₹12,500/mo
+  /// is the derived monthly equivalent, not a legal monthly limit.
   static const double _kPpfSsyMonthlyCap = 12500; // ₹1.5L / 12
+  /// Government small-savings rates, revised quarterly — 7.1% (PPF) and
+  /// 8.2% (SSY) hold through Q2 FY 2026-27 (Jul–Sep 2026).
   static const double _kPpfRate = 7.1;
   static const double _kSsyRate = 8.2;
+  /// Assumed long-run equity SIP return, not a guaranteed rate.
   static const double _kSipRate = 13.0;
 
   // -------------------------------------------------------------------------
@@ -434,7 +439,7 @@ class WealthEngines {
     required double sipMonthly,
   }) {
     final years = (retireAge - currentAge).clamp(0, 80);
-    final epfMonthly = monthlyBasicSalary * 0.24;
+    final epfMonthly = monthlyBasicSalary * 0.24 - epsMonthly(monthlyBasicSalary);
     final instruments = [
       _instrument('EPF', _kEpfRate, epfMonthly, years),
       _instrument('NPS', _kNpsRate, npsMonthly, years),
@@ -443,6 +448,13 @@ class WealthEngines {
     return RetirementResult(years: years, instruments: instruments);
   }
 
+  /// Employer share diverted to the EPS pension: 8.33% of basic, capped at a
+  /// ₹15,000 pensionable salary (max ₹1,249.50/mo). Only the rest of the
+  /// combined 24% of basic actually lands in the EPF account.
+  static double epsMonthly(double monthlyBasicSalary) =>
+      math.min(monthlyBasicSalary, 15000) * 0.0833;
+
+  /// EPF rate 8.25% — declared by EPFO for FY 2025-26.
   static const double _kEpfRate = 8.25;
   static const double _kNpsRate = 10.0;
 
