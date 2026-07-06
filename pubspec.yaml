@@ -65,13 +65,13 @@ dev_dependencies:
 
 # App launcher icon generation: `dart run flutter_launcher_icons`
 flutter_launcher_icons:
-  image_path: "assets/logo.jpg"
+  image_path: "assets/logo.png"
   android: true
   ios: true
   remove_alpha_ios: true
   min_sdk_android: 21
   adaptive_icon_background: "#FFFFFF"
-  adaptive_icon_foreground: "assets/logo.jpg"
+  adaptive_icon_foreground: "assets/logo.png"
   web:
     generate: true
   windows:
@@ -90,7 +90,7 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/logo.jpg
+    - assets/logo.png
     - assets/aqro_logo_full.png
     - assets/aqro_logo_white.png
     - assets/aqro_logo_black.png
