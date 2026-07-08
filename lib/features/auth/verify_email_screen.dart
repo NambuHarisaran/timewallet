@@ -44,6 +44,10 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
       await auth.reloadUser();
       if (auth.current?.emailVerified ?? false) {
         _poll?.cancel();
+        // Mint a fresh token so the email_verified claim reaches Firestore
+        // rules — otherwise the very next profile read is permission-denied.
+        await auth.refreshIdToken();
+        if (!mounted) return;
         ref.invalidate(authStateProvider);
       }
     } catch (_) {
@@ -82,8 +86,11 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
       final auth = ref.read(authServiceProvider);
       await auth.reloadUser();
       if (auth.current?.emailVerified ?? false) {
-        // Auth stream doesn't re-emit on verification — force AuthGate to
-        // re-evaluate against the now-refreshed currentUser.
+        // Fresh token first (email_verified claim → Firestore rules), then
+        // force AuthGate to re-evaluate: the auth stream doesn't re-emit on
+        // verification on its own.
+        await auth.refreshIdToken();
+        if (!mounted) return;
         ref.invalidate(authStateProvider);
       } else {
         _toast('Not verified yet. Check your inbox (and spam).');

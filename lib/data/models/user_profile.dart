@@ -37,6 +37,11 @@ class UserProfile {
   /// have to "log hours" — they only edit exceptions (leave, overtime).
   final bool standardDayAutoLog;
 
+  /// Index into the Time Card style palette (see widgets/time_card.dart).
+  /// The user designs this card during onboarding (IKEA effect) — it must
+  /// survive re-setup and stay editable, so it lives on the profile.
+  final int cardStyle;
+
   const UserProfile({
     this.name = '',
     this.age = 0,
@@ -53,6 +58,7 @@ class UserProfile {
     this.commuteMinutesPerDay = 0,
     this.workCostsPerMonth = 0,
     this.standardDayAutoLog = false,
+    this.cardStyle = 0,
   });
 
   bool get isNightShift => workDayStartHour != 0;
@@ -138,6 +144,7 @@ class UserProfile {
     double? commuteMinutesPerDay,
     double? workCostsPerMonth,
     bool? standardDayAutoLog,
+    int? cardStyle,
   }) {
     return UserProfile(
       name: name ?? this.name,
@@ -155,6 +162,7 @@ class UserProfile {
       commuteMinutesPerDay: commuteMinutesPerDay ?? this.commuteMinutesPerDay,
       workCostsPerMonth: workCostsPerMonth ?? this.workCostsPerMonth,
       standardDayAutoLog: standardDayAutoLog ?? this.standardDayAutoLog,
+      cardStyle: cardStyle ?? this.cardStyle,
     );
   }
 
@@ -174,6 +182,7 @@ class UserProfile {
         'commuteMinutesPerDay': commuteMinutesPerDay,
         'workCostsPerMonth': workCostsPerMonth,
         'standardDayAutoLog': standardDayAutoLog,
+        'cardStyle': cardStyle,
       };
 
   factory UserProfile.fromJson(Map<String, dynamic> j) => UserProfile(
@@ -193,5 +202,6 @@ class UserProfile {
         commuteMinutesPerDay: safeDouble(j['commuteMinutesPerDay']),
         workCostsPerMonth: safeDouble(j['workCostsPerMonth']),
         standardDayAutoLog: j['standardDayAutoLog'] == true,
+        cardStyle: safeInt(j['cardStyle']),
       );
 }

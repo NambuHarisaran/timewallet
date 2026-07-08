@@ -86,6 +86,16 @@ class AuthService {
 
   Future<void> reloadUser() => _auth.currentUser?.reload() ?? Future.value();
 
+  /// Forces a brand-new ID token. `reload()` refreshes the SDK `User` object
+  /// (so `emailVerified` flips to true locally) but leaves the cached ID token
+  /// untouched — and Firestore security rules read `email_verified` from that
+  /// token, not from the User. Without this, a just-verified password account
+  /// is denied reads (`permission-denied`) until the token naturally expires
+  /// (~1h). Call this the moment verification is detected, and on retry after
+  /// a denial, so the fresh claim reaches the rules immediately.
+  Future<void> refreshIdToken() =>
+      _auth.currentUser?.getIdToken(true) ?? Future.value();
+
   Future<void> signOut() async {
     await _auth.signOut();
     if (!kIsWeb) {

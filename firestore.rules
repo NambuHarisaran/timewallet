@@ -6,12 +6,23 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Ownership + verified email. Password accounts must have a verified
-    // email (the app gates this in UI, but rules must enforce it too — S4);
-    // Google/other federated providers arrive pre-verified.
-    function owner(userId) {
-      return request.auth != null
-          && request.auth.uid == userId
+    // Ownership only — used for READS and DELETES. A signed-in user reading
+    // or removing their OWN data is always safe. Gating reads on
+    // email_verified (as this once did) locked users out of even loading
+    // their profile whenever the ID token's email_verified claim lagged
+    // behind reality — the claim lives in the token, and reload() refreshes
+    // the SDK user but not the token, so a just-verified account was denied
+    // (permission-denied) until the token naturally refreshed (~1h).
+    function owns(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+    // Ownership + verified email — used for WRITES only, to keep unverified
+    // password accounts from persisting data. Google/other federated
+    // providers arrive pre-verified (S4). Writes tolerate a stale claim
+    // gracefully: the app force-refreshes the token on verification, and a
+    // denied write simply doesn't persist rather than locking the whole app.
+    function ownerVerified(userId) {
+      return owns(userId)
           && (request.auth.token.firebase.sign_in_provider != 'password'
               || request.auth.token.email_verified == true);
     }
@@ -29,14 +40,31 @@ service cloud.firestore {
 
     match /users/{userId} {
       // Profile document.
-      allow read: if owner(userId);
-      allow write: if owner(userId)
+      allow read: if owns(userId);
+      // Shape-check the profile the same way every subcollection is checked:
+      // bound the money/time numbers so a tampered client can't persist
+      // absurd magnitudes (1e308-scale, negatives) that corrupt THIS user's
+      // own aggregates and charts (S11). saveProfile always writes the full
+      // toJson() (all 16 fields), so every field is present post-merge and
+      // none of these checks can spuriously deny a legitimate save.
+      allow write: if ownerVerified(userId)
                    && request.resource.data.size() <= 24
-                   && strOk(request.resource.data.name, 80);
+                   && strOk(request.resource.data.name, 80)
+                   && numOk(request.resource.data.monthlyIncome)
+                   && numOk(request.resource.data.hourlyRate)
+                   && numOk(request.resource.data.workDaysPerWeek)
+                   && numOk(request.resource.data.hoursPerDay)
+                   && numOk(request.resource.data.commuteMinutesPerDay)
+                   && numOk(request.resource.data.workCostsPerMonth)
+                   && intIn(request.resource.data.age, 0, 150)
+                   && intIn(request.resource.data.workDayStartHour, 0, 23)
+                   && intIn(request.resource.data.cardStyle, 0, 99)
+                   && intIn(request.resource.data.persona, 0, 10)
+                   && intIn(request.resource.data.incomeType, 0, 10);
 
       match /expenses/{id} {
-        allow read, delete: if owner(userId);
-        allow write: if owner(userId)
+        allow read, delete: if owns(userId);
+        allow write: if ownerVerified(userId)
           && request.resource.data.size() <= 12
           && numOk(request.resource.data.amount)
           && intIn(request.resource.data.mood, 0, 2)
@@ -46,8 +74,8 @@ service cloud.firestore {
       }
 
       match /goals/{id} {
-        allow read, delete: if owner(userId);
-        allow write: if owner(userId)
+        allow read, delete: if owns(userId);
+        allow write: if ownerVerified(userId)
           && request.resource.data.size() <= 10
           && numOk(request.resource.data.amount)
           && numOk(request.resource.data.savedAmount)
@@ -56,8 +84,8 @@ service cloud.firestore {
       }
 
       match /holdings/{id} {
-        allow read, delete: if owner(userId);
-        allow write: if owner(userId)
+        allow read, delete: if owns(userId);
+        allow write: if ownerVerified(userId)
           && request.resource.data.size() <= 14
           // 0..3 leaves room for the planned mutualFund asset type.
           && intIn(request.resource.data.type, 0, 3)
@@ -67,8 +95,8 @@ service cloud.firestore {
       }
 
       match /activity/{id} {
-        allow read, delete: if owner(userId);
-        allow write: if owner(userId)
+        allow read, delete: if owns(userId);
+        allow write: if ownerVerified(userId)
           && request.resource.data.size() <= 10
           // ActivityType enum currently has 14 values; 0..31 leaves headroom
           // for new types without a rules redeploy (S11).
@@ -77,16 +105,16 @@ service cloud.firestore {
       }
 
       match /budgets/{id} {
-        allow read, delete: if owner(userId);
-        allow write: if owner(userId)
+        allow read, delete: if owns(userId);
+        allow write: if ownerVerified(userId)
           && request.resource.data.size() <= 4
           && strOk(request.resource.data.categoryId, 40)
           && numOk(request.resource.data.monthlyLimit);
       }
 
       match /recurring/{id} {
-        allow read, delete: if owner(userId);
-        allow write: if owner(userId)
+        allow read, delete: if owns(userId);
+        allow write: if ownerVerified(userId)
           && request.resource.data.size() <= 8
           && strOk(request.resource.data.name, 80)
           && numOk(request.resource.data.amount)
@@ -98,8 +126,8 @@ service cloud.firestore {
       // map of day-key → minutes (size-capped ≈ 2 years of days); 'stats'
       // holds small counters. Unknown doc IDs are denied (fail closed).
       match /state/{doc} {
-        allow read, delete: if owner(userId);
-        allow write: if owner(userId)
+        allow read, delete: if owns(userId);
+        allow write: if ownerVerified(userId)
           && (
             (doc == 'worked' && request.resource.data.size() <= 800)
             || (doc == 'stats'

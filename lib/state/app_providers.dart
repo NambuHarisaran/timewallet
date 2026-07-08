@@ -255,6 +255,15 @@ class AppActions {
   }
 
   Future<void> saveProfile(UserProfile p) async {
+    // Writes are gated on email_verified (rules). A just-verified account
+    // still carries the OLD claim in its cached ID token — reload() refreshes
+    // the SDK user but not the token — so the first profile write (onboarding)
+    // is denied until the token is minted afresh. Force that here so the
+    // current claim reaches the rules. Best-effort: offline / no-user simply
+    // proceeds and the write queues or fails normally.
+    try {
+      await _ref.read(firebaseAuthProvider).currentUser?.getIdToken(true);
+    } catch (_) {}
     await _b.saveProfile(p);
     await _log(ActivityType.profileUpdated, 'Profile updated');
   }
@@ -718,6 +727,36 @@ class ViewedTourNotifier extends Notifier<bool> {
 
 final viewedTourProvider =
     NotifierProvider<ViewedTourNotifier, bool>(ViewedTourNotifier.new);
+
+/// Pre-signup intro flow (Duolingo pattern). The seen-flag drives AuthGate —
+/// a signed-out fresh install gets the teach-first intro exactly once — and
+/// the answers collected there (income, persona) are stashed in prefs so
+/// onboarding can prefill them after signup ("we already know you").
+class IntroSeenNotifier extends Notifier<bool> {
+  static const _key = 'intro_done';
+  static const incomeKey = 'intro_income';
+  static const personaKey = 'intro_persona';
+
+  @override
+  bool build() => ref.read(sharedPrefsProvider).getBool(_key) ?? false;
+
+  /// Marks the intro finished and stashes the collected answers for the
+  /// post-signup prefill. Income ≤ 0 means the slider was never meaningful.
+  Future<void> complete({double? income, Persona? persona}) async {
+    state = true;
+    final prefs = ref.read(sharedPrefsProvider);
+    await prefs.setBool(_key, true);
+    if (income != null && income > 0) {
+      await prefs.setDouble(incomeKey, income);
+    }
+    if (persona != null) {
+      await prefs.setInt(personaKey, persona.index);
+    }
+  }
+}
+
+final introSeenProvider =
+    NotifierProvider<IntroSeenNotifier, bool>(IntroSeenNotifier.new);
 
 // ---------------------------------------------------------------------------
 // Weekly review ("Life Receipt") — the weekly retention ritual.

@@ -83,7 +83,15 @@ class _SalarySetupScreenState extends ConsumerState<SalarySetupScreen> {
       overtimePaid: _overtimePaid,
       onboarded: true,
     );
-    ref.read(appActionsProvider).saveProfile(profile);
+    // Fire-and-forget with a guard: an unhandled write rejection (e.g.
+    // offline, or an unverified account failing the write rule) would
+    // otherwise crash instead of failing quietly.
+    final messenger = ScaffoldMessenger.of(context);
+    ref.read(appActionsProvider).saveProfile(profile).catchError((_) {
+      messenger.showSnackBar(const SnackBar(
+        content: Text("Couldn't save. Check your connection and try again."),
+      ));
+    });
     // First run: profile stream emits onboarded:true -> AuthGate swaps to
     // HomeShell. Re-setup (pushed from Profile): just pop back.
     if (Navigator.of(context).canPop()) Navigator.of(context).pop();
@@ -206,11 +214,16 @@ class _SalarySetupScreenState extends ConsumerState<SalarySetupScreen> {
                 Text(_isAllowance ? 'YOUR MONTHLY BUDGET' : 'YOUR TIME IS WORTH',
                     style: t.labelSmall?.copyWith(color: Colors.white70)),
                 const SizedBox(height: 8),
-                Text(
-                  _isAllowance
-                      ? '${fmt.format(_monthly)} / month'
-                      : '${fmt.format(_effectiveRate)} / hour',
-                  style: t.displayLarge?.copyWith(color: Colors.white),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    _isAllowance
+                        ? '${fmt.format(_monthly)} / month'
+                        : '${fmt.format(_effectiveRate)} / hour',
+                    maxLines: 1,
+                    style: t.displayLarge?.copyWith(color: Colors.white),
+                  ),
                 ),
                 if (_isAllowance) ...[
                   const SizedBox(height: 6),

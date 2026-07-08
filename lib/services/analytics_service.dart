@@ -21,9 +21,13 @@ class AnalyticsService {
   }
 
   // ---- Activation funnel ----
+  void introComplete({required String persona}) =>
+      _log('intro_complete', {'persona': persona});
   void onboardingComplete({required String incomeType, required bool tracksTime}) =>
       _log('onboarding_complete',
           {'income_type': incomeType, 'tracks_time': '$tracksTime'});
+  void cardDesigned({required int style}) =>
+      _log('card_designed', {'style': '$style'});
 
   // ---- Core loop ----
   void expenseAdd({required String category, required bool held}) =>

@@ -6,6 +6,7 @@ import 'core/theme/app_theme.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/verify_email_screen.dart';
 import 'features/home_shell.dart';
+import 'features/intro/intro_flow_screen.dart';
 import 'features/onboarding/onboarding_screen.dart';
 import 'state/app_providers.dart';
 
@@ -37,7 +38,14 @@ class _AuthGate extends ConsumerWidget {
       loading: () => const _Splash(),
       error: (e, _) => _ErrorView(message: '$e'),
       data: (user) {
-        if (user == null) return const LoginScreen();
+        if (user == null) {
+          // Fresh installs learn before the signup wall (Duolingo pattern):
+          // the intro runs once, collects income + persona for the
+          // post-signup prefill, then flips introSeenProvider → login.
+          return ref.watch(introSeenProvider)
+              ? const LoginScreen()
+              : const IntroFlowScreen();
+        }
 
         // Email/password accounts must verify before entering. Google accounts
         // arrive with emailVerified == true and pass straight through.
@@ -110,7 +118,18 @@ class _ErrorView extends ConsumerWidget {
               ],
               const SizedBox(height: 20),
               FilledButton.icon(
-                onPressed: () => ref.invalidate(authStateProvider),
+                // A permission-denied here is almost always a stale ID token
+                // whose email_verified claim lags behind the just-verified
+                // account. Mint a fresh token before re-reading, otherwise
+                // "Try again" re-runs with the same stale claim and loops.
+                onPressed: () async {
+                  try {
+                    await ref.read(authServiceProvider).refreshIdToken();
+                  } catch (_) {
+                    // Offline / no user — fall through to a plain re-read.
+                  }
+                  ref.invalidate(authStateProvider);
+                },
                 icon: const Icon(Icons.refresh),
                 label: const Text('Try again'),
               ),

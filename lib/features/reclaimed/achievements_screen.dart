@@ -66,12 +66,17 @@ class AchievementsScreen extends ConsumerWidget {
                 Text('LIFE RECLAIMED',
                     style: t.labelSmall?.copyWith(color: Colors.white70)),
                 const SizedBox(height: 8),
-                Text(
-                  reclaimedMin > 0
-                      ? TimeFormat.longForm(reclaimedMin,
-                          hoursPerDay: profile.hoursPerDay)
-                      : 'Nothing yet',
-                  style: t.displayLarge?.copyWith(color: Colors.white),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    reclaimedMin > 0
+                        ? TimeFormat.longForm(reclaimedMin,
+                            hoursPerDay: profile.hoursPerDay)
+                        : 'Nothing yet',
+                    maxLines: 1,
+                    style: t.displayLarge?.copyWith(color: Colors.white),
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -138,7 +143,9 @@ class _BadgeTile extends StatelessWidget {
     final color = unlocked ? AppColors.positive : Colors.white24;
     return SectionCard(
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        // Top-align so every tile's icon sits at the same height — centering
+        // let 1-line vs 2-line blurbs shove icons to different y across a row.
+        mainAxisAlignment: MainAxisAlignment.start,
         children: [
           Stack(
             alignment: Alignment.center,

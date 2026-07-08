@@ -4,12 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/util/formatters.dart';
-import '../../data/models/user_profile.dart';
 import '../../services/export_service.dart';
 import '../../state/app_providers.dart';
-import '../../widgets/gradient_card.dart';
 import '../../widgets/responsive_body.dart';
 import '../../widgets/section_card.dart';
+import '../../widgets/time_card.dart';
 import '../budgets/budgets_screen.dart';
 import '../expense/expenses_screen.dart';
 import '../history/history_screen.dart';
@@ -28,13 +27,6 @@ import 'package:url_launcher/url_launcher.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
-
-  static const _personaLabel = {
-    Persona.student: 'Student',
-    Persona.freelancer: 'Freelancer',
-    Persona.employee: 'Employee',
-    Persona.owner: 'Business owner',
-  };
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -59,97 +51,75 @@ class ProfileScreen extends ConsumerWidget {
           Text('Profile',
               style: t.headlineLarge?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 20),
-          // Identity header
-          SectionCard(
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 28,
-                  backgroundColor: AppColors.money,
-                  child: profile.name.isNotEmpty
-                      ? Text(
-                          profile.name.characters.first.toUpperCase(),
-                          style: const TextStyle(
-                              fontSize: 22, color: Colors.white),
-                        )
-                      : const Icon(Icons.person, color: Colors.white),
+          // Identity header — the Time Card the user designed in onboarding.
+          // Their own artifact greets them here every session (IKEA effect).
+          TimeCard(profile: profile),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  email,
+                  overflow: TextOverflow.ellipsis,
+                  style:
+                      t.bodySmall?.copyWith(color: AppColors.muted(context)),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        profile.name.isNotEmpty ? profile.name : 'Add your name',
-                        style: t.titleLarge,
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        [
-                          if (profile.age > 0) '${profile.age} yrs',
-                          _personaLabel[profile.persona]!,
-                        ].join(' · '),
-                        style: t.bodyMedium,
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined),
-                  tooltip: 'Edit profile',
-                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => const EditProfileScreen())),
-                ),
-              ],
-            ),
+              ),
+              TextButton.icon(
+                icon: const Icon(Icons.edit_outlined, size: 18),
+                label: const Text('Edit profile'),
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => const EditProfileScreen())),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
-          GradientCard(
-            colors: AppColors.heroNeutral,
+          // The Time Card already shows the headline rate/budget, so this
+          // strip adds only what it doesn't: the work schedule (or budget
+          // mode) and the true-wage insight when the user has entered
+          // commute/work-cost deductions — no duplicated hero number.
+          SectionCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(profile.tracksTime ? 'YOUR TIME VALUE' : 'MONTHLY BUDGET',
-                    style: t.labelSmall?.copyWith(color: Colors.white70)),
-                const SizedBox(height: 8),
-                Text(
-                  profile.tracksTime
-                      ? '${fmt.format(profile.effectiveHourlyRate)} / hour'
-                      : '${fmt.format(profile.monthlyMoney)} / month',
-                  style: t.displayLarge?.copyWith(color: Colors.white),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  profile.tracksTime
-                      ? '${profile.workDaysPerWeek.toStringAsFixed(0)} days/wk · '
-                          '${profile.hoursPerDay.toStringAsFixed(0)}h/day'
-                      : 'Pocket-money mode — spending tracked against budget',
-                  style: t.bodyMedium?.copyWith(color: Colors.white70),
+                Row(
+                  children: [
+                    Icon(
+                      profile.tracksTime
+                          ? Icons.schedule
+                          : Icons.account_balance_wallet_outlined,
+                      size: 18,
+                      color: AppColors.muted(context),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        profile.tracksTime
+                            ? '${profile.workDaysPerWeek.toStringAsFixed(0)} days/wk · '
+                                '${profile.hoursPerDay.toStringAsFixed(0)}h/day'
+                            : 'Pocket-money mode — spending tracked against budget',
+                        style: t.bodyMedium,
+                      ),
+                    ),
+                  ],
                 ),
                 if (profile.tracksTime && profile.hasTrueWageInputs) ...[
                   const SizedBox(height: 10),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.trending_down,
-                            size: 16, color: Colors.white),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Real ${fmt.format(profile.trueHourlyRate)}/hr · '
-                          '${(profile.trueWageDropPct * 100).round()}% less',
+                  Row(
+                    children: [
+                      const Icon(Icons.trending_down,
+                          size: 18, color: AppColors.warn),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Real wage ${fmt.format(profile.trueHourlyRate)}/hr'
+                          '  ·  ${(profile.trueWageDropPct * 100).round()}% less',
                           style: t.bodyMedium?.copyWith(
-                              color: Colors.white,
+                              color: AppColors.warn,
                               fontWeight: FontWeight.w600),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ],
               ],

@@ -6,7 +6,9 @@ import '../../core/theme/app_colors.dart';
 import '../../core/util/formatters.dart';
 import '../../data/models/user_profile.dart';
 import '../../state/app_providers.dart';
+import '../../widgets/responsive_body.dart';
 import '../../widgets/section_card.dart';
+import '../../widgets/time_card.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});
@@ -29,6 +31,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   late int _workDayStartHour;
   late bool _overtimePaid;
   late bool _standardDayAutoLog;
+  late int _cardStyle;
 
   static const Map<Persona, (IconData, String)> _personaLabels = {
     Persona.student: (Icons.school_outlined, 'Student'),
@@ -68,6 +71,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     _workDayStartHour = p.workDayStartHour;
     _overtimePaid = p.overtimePaid;
     _standardDayAutoLog = p.standardDayAutoLog;
+    _cardStyle = p.cardStyle;
   }
 
   @override
@@ -126,12 +130,19 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       commuteMinutesPerDay: _commuteMin,
       workCostsPerMonth: _workCostsM,
       standardDayAutoLog: _standardDayAutoLog,
+      cardStyle: _cardStyle,
       onboarded: true,
     );
-    ref.read(appActionsProvider).saveProfile(next);
+    // Guard the fire-and-forget write: without a catch, a permission-denied
+    // or offline rejection surfaces as an unhandled exception.
+    final messenger = ScaffoldMessenger.of(context);
+    ref.read(appActionsProvider).saveProfile(next).catchError((_) {
+      messenger.showSnackBar(const SnackBar(
+        content: Text("Couldn't save changes. Check your connection."),
+      ));
+    });
     Navigator.of(context).pop();
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('Profile updated')));
+    messenger.showSnackBar(const SnackBar(content: Text('Profile updated')));
   }
 
   @override
@@ -141,9 +152,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Edit profile')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
+      body: ContentWidth(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
+          children: [
           TextField(
             controller: _name,
             textCapitalization: TextCapitalization.words,
@@ -180,6 +192,23 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 onSelected: (_) => setState(() => _persona = p),
               );
             }).toList(),
+          ),
+          const SizedBox(height: 24),
+          // The Time Card the user designed in onboarding — kept editable
+          // here so the artifact stays theirs (IKEA effect), with a live
+          // preview so a style tap gives instant feedback.
+          Text('Your Time Card', style: t.titleLarge),
+          const SizedBox(height: 12),
+          TimeCard(
+            profile: ref
+                .read(profileOrDefaultProvider)
+                .copyWith(name: _name.text.trim(), persona: _persona),
+            style: _cardStyle,
+          ),
+          const SizedBox(height: 12),
+          TimeCardStylePicker(
+            selected: _cardStyle,
+            onSelected: (i) => setState(() => _cardStyle = i),
           ),
           const SizedBox(height: 24),
           Text('Income source', style: t.titleLarge),
@@ -268,11 +297,16 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 Text(_isAllowance ? 'Monthly budget' : 'Time value',
                     style: t.labelSmall),
                 const SizedBox(height: 6),
-                Text(
-                  _isAllowance
-                      ? '${fmt.format(_monthly)} / month'
-                      : '${fmt.format(_effectiveRate)} / hour',
-                  style: t.displayLarge?.copyWith(color: AppColors.time),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    _isAllowance
+                        ? '${fmt.format(_monthly)} / month'
+                        : '${fmt.format(_effectiveRate)} / hour',
+                    maxLines: 1,
+                    style: t.displayLarge?.copyWith(color: AppColors.time),
+                  ),
                 ),
                 if (!_isAllowance && _hasDeductions && _trueRate > 0) ...[
                   const SizedBox(height: 10),
@@ -300,7 +334,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             onPressed: _valid ? _save : null,
             child: const Text('Save changes'),
           ),
-        ],
+          ],
+        ),
       ),
     );
   }
