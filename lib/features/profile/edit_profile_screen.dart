@@ -44,6 +44,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     IncomeType.hourly: 'Hourly',
     IncomeType.variable: 'Variable',
     IncomeType.allowance: 'Pocket money',
+    IncomeType.founder: 'Founder',
   };
 
   @override
@@ -86,11 +87,15 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   }
 
   bool get _isAllowance => _type == IncomeType.allowance;
+  bool get _isFounder => _type == IncomeType.founder;
   double get _monthly => double.tryParse(_income.text) ?? 0;
 
   double get _effectiveRate {
     if (_isAllowance) return 0;
-    if (_type == IncomeType.hourly) return double.tryParse(_rate.text) ?? 0;
+    // Founder & hourly both read the self-set rate directly.
+    if (_type == IncomeType.hourly || _isFounder) {
+      return double.tryParse(_rate.text) ?? 0;
+    }
     final hours = _daysPerWeek * 4.33 * _hoursPerDay;
     return hours <= 0 ? 0 : _monthly / hours;
   }
@@ -227,7 +232,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           const SizedBox(height: 16),
           if (_type == IncomeType.hourly)
             _moneyField(_rate, 'Hourly rate (₹)')
-          else
+          else if (_isFounder) ...[
+            _moneyField(_rate, 'What your hour is worth (₹/hr)'),
+            const SizedBox(height: 12),
+            _moneyField(_income, 'Monthly draw (₹, optional — for budget)'),
+          ] else
             _moneyField(
                 _income,
                 _isAllowance

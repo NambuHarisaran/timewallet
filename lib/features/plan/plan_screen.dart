@@ -123,6 +123,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
       body: SafeArea(
         bottom: false,
         child: ContentWidth(
+          maxWidth: 1120,
           child: ListView(
             padding: EdgeInsets.fromLTRB(16, 16, 16, safeBottom + 92),
             children: [
@@ -134,15 +135,13 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
               const SizedBox(height: 20),
               _SectionLabel('PLAN BIG DECISIONS'),
               const SizedBox(height: 10),
-              for (final e in _engines) ...[_tile(e), const SizedBox(height: 12)],
-              const SizedBox(height: 12),
+              TileGrid(children: [for (final e in _engines) _tile(e)]),
+              const SizedBox(height: 24),
               _SectionLabel('QUICK CALCULATORS'),
               const SizedBox(height: 10),
-              for (final tool in visibleTools) ...[
-                _tile(tool),
+              TileGrid(children: [for (final tool in visibleTools) _tile(tool)]),
+              if (!_showAll) ...[
                 const SizedBox(height: 12),
-              ],
-              if (!_showAll)
                 Pressable(
                   onTap: _reveal,
                   child: SectionCard(
@@ -178,6 +177,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                     ),
                   ),
                 ),
+              ],
             ],
           ),
         ),

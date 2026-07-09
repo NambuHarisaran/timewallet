@@ -31,6 +31,7 @@ class ReviewHubScreen extends ConsumerWidget {
       body: SafeArea(
         bottom: false,
         child: ContentWidth(
+          maxWidth: 1120,
           child: ListView(
             padding: EdgeInsets.fromLTRB(16, 16, 16, safeBottom + 92),
             children: [
@@ -39,41 +40,43 @@ class ReviewHubScreen extends ConsumerWidget {
               const SizedBox(height: 4),
               Text('Look back, then buy back your time.', style: t.bodyMedium),
               const SizedBox(height: 20),
-              FeatureTile(
-                icon: Icons.event_available_outlined,
-                title: 'This week in hours',
-                subtitle: done
-                    ? 'Reviewed ✓ — tap to see it again'
-                    : 'Your 60-second Life Receipt',
-                color: AppColors.accent,
-                trailing: done
-                    ? const Icon(Icons.check_circle, color: AppColors.positive)
-                    : const Icon(Icons.chevron_right),
-                onTap: () => push(const WeeklyReviewScreen()),
-              ),
-              const SizedBox(height: 12),
-              FeatureTile(
-                icon: Icons.auto_awesome,
-                title: 'Wrapped',
-                subtitle: 'Your month & year, recapped',
-                color: AppColors.money,
-                onTap: () => push(const WrappedScreen()),
-              ),
-              const SizedBox(height: 12),
-              FeatureTile(
-                icon: Icons.insights,
-                title: 'Insights',
-                subtitle: 'Trends, categories, life-energy',
-                color: AppColors.money,
-                onTap: () => push(const InsightsScreen()),
-              ),
-              const SizedBox(height: 12),
-              FeatureTile(
-                icon: Icons.emoji_events_outlined,
-                title: 'Achievements',
-                subtitle: 'Time reclaimed, badges earned',
-                color: AppColors.positive,
-                onTap: () => push(const AchievementsScreen()),
+              TileGrid(
+                children: [
+                  FeatureTile(
+                    icon: Icons.event_available_outlined,
+                    title: 'This week in hours',
+                    subtitle: done
+                        ? 'Reviewed ✓ — tap to see it again'
+                        : 'Your 60-second Life Receipt',
+                    color: AppColors.accent,
+                    trailing: done
+                        ? const Icon(Icons.check_circle,
+                            color: AppColors.positive)
+                        : const Icon(Icons.chevron_right),
+                    onTap: () => push(const WeeklyReviewScreen()),
+                  ),
+                  FeatureTile(
+                    icon: Icons.auto_awesome,
+                    title: 'Wrapped',
+                    subtitle: 'Your month & year, recapped',
+                    color: AppColors.money,
+                    onTap: () => push(const WrappedScreen()),
+                  ),
+                  FeatureTile(
+                    icon: Icons.insights,
+                    title: 'Insights',
+                    subtitle: 'Trends, categories, life-energy',
+                    color: AppColors.money,
+                    onTap: () => push(const InsightsScreen()),
+                  ),
+                  FeatureTile(
+                    icon: Icons.emoji_events_outlined,
+                    title: 'Achievements',
+                    subtitle: 'Time reclaimed, badges earned',
+                    color: AppColors.positive,
+                    onTap: () => push(const AchievementsScreen()),
+                  ),
+                ],
               ),
             ],
           ),

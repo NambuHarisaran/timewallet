@@ -40,6 +40,7 @@ class _SalarySetupScreenState extends ConsumerState<SalarySetupScreen> {
     IncomeType.hourly: 'Hourly',
     IncomeType.variable: 'Variable',
     IncomeType.allowance: 'Pocket money',
+    IncomeType.founder: 'Founder',
   };
 
   @override
@@ -53,9 +54,14 @@ class _SalarySetupScreenState extends ConsumerState<SalarySetupScreen> {
 
   bool get _isAllowance => _type == IncomeType.allowance;
 
+  bool get _isFounder => _type == IncomeType.founder;
+
   double get _effectiveRate {
     if (_isAllowance) return 0;
-    if (_type == IncomeType.hourly) return double.tryParse(_rate.text) ?? 0;
+    // Founder & hourly both read the self-set rate directly.
+    if (_type == IncomeType.hourly || _isFounder) {
+      return double.tryParse(_rate.text) ?? 0;
+    }
     final monthly = double.tryParse(_income.text) ?? 0;
     final hours = _daysPerWeek * 4.33 * _hoursPerDay;
     return hours <= 0 ? 0 : monthly / hours;
@@ -164,7 +170,17 @@ class _SalarySetupScreenState extends ConsumerState<SalarySetupScreen> {
           const SizedBox(height: 16),
           if (_type == IncomeType.hourly)
             _moneyField(_rate, 'Your hourly rate (₹)')
-          else
+          else if (_isFounder) ...[
+            _moneyField(_rate, 'What your hour is worth (₹/hr)'),
+            const SizedBox(height: 6),
+            Text(
+              "You don't draw a fixed salary — you decide what an hour of your "
+              'time is worth.',
+              style: t.bodySmall?.copyWith(color: AppColors.muted(context)),
+            ),
+            const SizedBox(height: 12),
+            _moneyField(_income, 'Monthly draw (₹, optional — for budget)'),
+          ] else
             _moneyField(
               _income,
               _isAllowance

@@ -4,7 +4,11 @@ import '../../core/util/json_safe.dart';
 enum Persona { student, freelancer, employee, owner }
 
 /// allowance = non-earner (pocket money). No work time -> budget tracking only.
-enum IncomeType { fixed, hourly, variable, allowance }
+/// founder = self-set hour worth. Founders draw little/no salary, so THEY
+/// decide what an hour is worth (stored in [UserProfile.hourlyRate]); their
+/// optional monthly draw ([UserProfile.monthlyIncome]) drives budget only.
+/// Append-only — Firestore stores incomeType.index, so never reorder.
+enum IncomeType { fixed, hourly, variable, allowance, founder }
 
 class UserProfile {
   final String name;
@@ -63,10 +67,17 @@ class UserProfile {
 
   bool get isNightShift => workDayStartHour != 0;
 
+  /// True when the user sets their own hour worth instead of deriving it from
+  /// a salary — founders who take little/no pay decide what their time is worth.
+  bool get isFounder => incomeType == IncomeType.founder;
+
   /// Earnings per worked hour. Zero for allowance (no work) -> disables time mode.
   double get effectiveHourlyRate {
     if (incomeType == IncomeType.allowance) return 0;
     if (incomeType == IncomeType.hourly) return hourlyRate;
+    // Founders self-declare their worth (hourlyRate) rather than back it out
+    // of a salary they may not draw.
+    if (incomeType == IncomeType.founder) return hourlyRate;
     return TimeEngine.rateFromMonthly(
       netMonthlyIncome: monthlyIncome,
       workDaysPerWeek: workDaysPerWeek,
@@ -79,7 +90,9 @@ class UserProfile {
     if (incomeType == IncomeType.hourly) {
       return hourlyRate * hoursPerDay * workDaysPerWeek * 4.33;
     }
-    return monthlyIncome; // fixed, variable, allowance
+    // fixed, variable, allowance, founder — for founders this is their actual
+    // (small) monthly draw, kept separate from their self-set hour worth.
+    return monthlyIncome;
   }
 
   /// When true the app shows spending as work-time; otherwise as budget %.

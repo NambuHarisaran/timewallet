@@ -125,11 +125,15 @@ class GoalsScreen extends ConsumerWidget {
       body: goals.isEmpty
           ? _empty(context, ref)
           : ContentWidth(
-              child: ListView.separated(
-                padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).viewPadding.bottom + 92),
-                itemCount: goals.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 12),
-                itemBuilder: (_, i) => _GoalTile(goal: goals[i]),
+              maxWidth: 1120,
+              child: ListView(
+                padding: EdgeInsets.fromLTRB(
+                    16, 16, 16, MediaQuery.of(context).viewPadding.bottom + 92),
+                children: [
+                  TileGrid(
+                    children: [for (final g in goals) _GoalTile(goal: g)],
+                  ),
+                ],
               ),
             ),
     );

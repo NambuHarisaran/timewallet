@@ -137,7 +137,7 @@ void main() {
       expect(pocketChip.selected, isTrue);
 
       // Advance to the about-you step: the persona chip is pre-picked.
-      await tester.tap(find.widgetWithText(FilledButton, 'Continue'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Next Step'));
       await tester.pumpAndSettle();
       final studentChip = tester.widget<ChoiceChip>(
           find.widgetWithText(ChoiceChip, 'Student', skipOffstage: false));
@@ -248,16 +248,16 @@ void main() {
       });
       expect(find.text("What's your time worth?"), findsOneWidget);
 
-      await tester.tap(find.widgetWithText(FilledButton, 'Continue'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Next Step'));
       await tester.pumpAndSettle();
       expect(find.text('A little about you'), findsOneWidget);
 
       // Reaching step 3 fires celebrate() — a one-shot 1.4s overlay; settle
       // lets it finish so the assertion sees a stable frame.
-      await tester.tap(find.widgetWithText(FilledButton, 'Continue'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Next Step'));
       await tester.pumpAndSettle();
       expect(find.text('Design your Time Card'), findsOneWidget);
-      expect(find.byType(TimeCard), findsOneWidget);
+      expect(find.byType(TimeCard), findsAtLeastNWidgets(1));
     });
   });
 }

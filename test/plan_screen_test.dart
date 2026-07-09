@@ -44,8 +44,14 @@ void main() {
 
   testWidgets('show-all reveals advanced calculators', (tester) async {
     await pump(tester);
-    await scrollTo(tester, find.text('Show all calculators'));
-    await tester.tap(find.text('Show all calculators'));
+    final showAll = find.text('Show all calculators');
+    await scrollTo(tester, showAll);
+    // The two-column grid can leave the reveal card's centre just past the
+    // fold after scrollUntilVisible stops — pull it fully on-screen so the tap
+    // lands instead of missing.
+    await tester.ensureVisible(showAll);
+    await tester.pumpAndSettle();
+    await tester.tap(showAll);
     await tester.pumpAndSettle();
     await scrollTo(tester, find.text('SIP calculator'));
     expect(find.text('SIP calculator'), findsOneWidget);

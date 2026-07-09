@@ -6,7 +6,6 @@ import 'core/theme/app_theme.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/verify_email_screen.dart';
 import 'features/home_shell.dart';
-import 'features/intro/intro_flow_screen.dart';
 import 'features/onboarding/onboarding_screen.dart';
 import 'state/app_providers.dart';
 
@@ -39,12 +38,12 @@ class _AuthGate extends ConsumerWidget {
       error: (e, _) => _ErrorView(message: '$e'),
       data: (user) {
         if (user == null) {
-          // Fresh installs learn before the signup wall (Duolingo pattern):
-          // the intro runs once, collects income + persona for the
-          // post-signup prefill, then flips introSeenProvider → login.
-          return ref.watch(introSeenProvider)
-              ? const LoginScreen()
-              : const IntroFlowScreen();
+          // Signed out → straight to login. The pre-signup teaching flow was
+          // removed (it felt repetitive against the post-signup onboarding,
+          // especially for founders); the "money is time" aha now lives on the
+          // login screen's demo card, and all profile questions are asked once,
+          // after signup, in OnboardingScreen.
+          return const LoginScreen();
         }
 
         // Email/password accounts must verify before entering. Google accounts
