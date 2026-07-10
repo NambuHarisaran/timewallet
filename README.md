@@ -1,7 +1,7 @@
 # Time Wallet 
 
 **Save your time the way you save your money.** TimeWallet converts every rupee
-you spend into the work-time it actually cost you — so "₹500" reads as
+you spend into the work-time it actually cost you — so "₹600" reads as
 "3h 28m of your life." Built for India/UPI, it turns abstract money decisions
 into something you can *feel*.
 
