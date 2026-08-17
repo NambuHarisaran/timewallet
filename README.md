@@ -150,5 +150,4 @@ auto-capture of UPI spends, home/lock-screen widgets. Engineering docs:
 `docs/PROJECT_REPORT.md` · `docs/ARCHITECTURE.md` · `docs/ROADMAP.md`.
 
 ---
-
-_Private project — `publish_to: none`. Package `in.no1ads.timewallet`._
+[![Get it on Google Play](https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png)](https://play.google.com/store/apps/details?id=in.no1ads.timewallet)
